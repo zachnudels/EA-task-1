@@ -6,6 +6,7 @@ import neat, multiprocessing, os, pickle
 from rnn_controller import RNNController
 from rnn_en_controller import EngineeredRNNController
 from datetime import datetime
+import platform
 
 import numpy as np
 
@@ -19,73 +20,81 @@ env = Environment(experiment_name=experiment_name,
 
 
 os.environ["SDL_VIDEODRIVER"] = "dummy"
+TIME_CONST = 0.001
+runs_per_net = 1
+
+
+def eval_genome(controller, net):
+    env.player_controller = controller
+    fitnesses = []
+    for runs in range(runs_per_net):
+        net.reset()
+        fitness, p, e, t = env.play(pcont=controller)
+        fitnesses.append(fitness)
+
+    return min(fitnesses)
 
 
 def eval_genome_fs_neat(genome, config):
-    TIME_CONST = 0.001
-    runs_per_net = 1
     net = neat.ctrnn.CTRNN.create(genome, config, TIME_CONST)
     controller = RNNController(net, TIME_CONST)
-    env.player_controller = controller
+    return eval_genome(controller, net)
 
-    fitnesses = []
-    for runs in range(runs_per_net):
-        net.reset()
-        fitness = 0
-        f,p,e,t = env.play(pcont=controller)
-        fitnesses.append(f)
-
-
-    return min(fitnesses)
 
 def eval_genome_feat_eng(genome, config):
-    TIME_CONST = 0.001
-    runs_per_net = 1
     net = neat.ctrnn.CTRNN.create(genome, config, TIME_CONST)
     controller = EngineeredRNNController(net, TIME_CONST)
-    env.player_controller = controller
+    return eval_genome(controller, net)
 
-    fitnesses = []
-    for runs in range(runs_per_net):
-        net.reset()
-        fitness = 0
-        f,p,e,t = env.play(pcont=controller)
-        fitnesses.append(f)
-
-    return min(fitnesses)
 
 def run_final_experiment():
-    ## RUN FINAL EXPERIMENT
+    generations = 100
+    cpus = multiprocessing.cpu_count()
+    runs = 10
+
+    if platform.system() == 'Darwin':
+        multiprocessing.set_start_method('spawn')  # Comment this if not on MACOS
+
 
     # run first EA
+    for method in ["ENGINEERED", "FS_NEAT"]:
+        # run for 3 individual enemies
+        for enemy in [1, 3, 5]:
+            # run 10 times with the same conditions and report average fitness per generation
+            durations = []
+            mean_fitness_per_generation = []
+            max_fitness_per_generation = []
+            best_solutions = []
+            for run in range(runs):
+                duration, means, maxes, winner = run_experiment(method, generations, cpus, enemy)
+                durations.append(durations)
+                mean_fitness_per_generation.append(means)
+                max_fitness_per_generation.append(maxes)
+                best_solutions.append(winner)
 
-    # run for 3 individual enemies
+            # final_best_solution = np.argmax(best_solutions) # TODO this is only the logic - adjust to how the best solution is actually stored
 
-    for enemy in [1,3,5]:
-        # run 10 times with the same conditions and report average fitness per generation
+            avg_mean_fitness_per_generation = np.mean(mean_fitness_per_generation)
+            std_mean_fitness_per_generation = np.std(mean_fitness_per_generation)
+            avg_max_fitness_per_generation = np.mean(max_fitness_per_generation)
+            std_max_fitness_per_generation = np.std(max_fitness_per_generation)
 
-        mean_fitness_per_generation = []
-        max_fitness_per_generation = []
-        best_solutions = []
-        for run in range(10):
-            # run fitting
-            pass
-
-            # for each generation save the maximum fitness and the mean fitness of the population
-
-            # save best solution
-
-        final_best_solution = np.argmax(best_solutions) # TODO this is only the logic - adjust to how the best solution is actually stored
-
-        avg_mean_fitness_per_generation = np.mean(mean_fitness_per_generation)
-        std_mean_fitness_per_generation = np.std(mean_fitness_per_generation)
-        avg_max_fitness_per_generation = np.mean(max_fitness_per_generation)
-        std_max_fitness_per_generation = np.std(max_fitness_per_generation)
-
-    # make a plot 
+        # make a plot
 
 
-def run_experiment(method, generations, cpus):
+def run_experiment(method, generations, cpus, enemy):
+    """
+    Parameters:
+        method:string ENGINEERED | FS_NEAT,
+        generations:int number of generations to run,
+        cpus:int number of cpus to use during run
+        enemy:int enemy to run against
+    Returns:
+        duration:datetime time of experiment,
+        means:array[float] mean fitness of each generation,
+        maxes:array[float] max fitness of each generation,
+        winner:genome the winning genotype
+    """
 
     local_dir = os.path.dirname('evoman')
 
@@ -99,6 +108,9 @@ def run_experiment(method, generations, cpus):
     stats = neat.StatisticsReporter()
     pop.add_reporter(stats)
     pop.add_reporter(neat.StdOutReporter(True))
+
+    env.enemies = [enemy]
+    pe = None
 
     if method == "ENGINEERED":
         pe = neat.ParallelEvaluator(cpus, eval_genome_feat_eng)
@@ -115,23 +127,10 @@ def run_experiment(method, generations, cpus):
 
 
 if __name__ == '__main__':
-    multiprocessing.set_start_method('spawn')  # Comment this if not on MACOS
-
-    """
-    PARAMTER CHOICES
-    """
-    # Method
-    # method = "FS_NEAT
-    method = "ENGINEERED"
-
-    # Generations
-    n = 4
-
-    # Number of CPUs
-    # cpus = multiprocessing.cpu_count()
-    cpus = 2
-
-    run_experiment(method, n, cpus)
-
+    # m = "ENGINEERED"
+    # n = 4
+    # c = 2
+    # run_experiment(m, n, c, 8)
+    run_final_experiment()
 
 
