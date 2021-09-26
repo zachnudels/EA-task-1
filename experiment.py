@@ -85,35 +85,15 @@ def run_final_experiment():
     # make a plot 
 
 
-
-if __name__ == '__main__':
-    multiprocessing.set_start_method('spawn')  # Comment this if not on MACOS
-
-    """
-    PARAMTER CHOICES
-    """
-    # Method
-    # method = "FS_NEAT
-    method = "ENGINEERED"
-
-    # Generations
-    n = 50
-
-    # Config
-    config_path = 'engineered.cfg'
-
-    # Number of CPUs
-    # cpus = multiprocessing.cpu_count()
-    cpus = 2
-
-
+def run_experiment(method, generations, cpus):
 
     local_dir = os.path.dirname('evoman')
-    config_path = os.path.join(local_dir, config_path)
+
+    config_path = os.path.join(local_dir, f"{method}.cfg")
     config = neat.Config(neat.DefaultGenome, neat.DefaultReproduction,
                          neat.DefaultSpeciesSet, neat.DefaultStagnation,
-                         config_path)
-
+                         config_path
+                         )
 
     pop = neat.Population(config)
     stats = neat.StatisticsReporter()
@@ -126,7 +106,32 @@ if __name__ == '__main__':
         pe = neat.ParallelEvaluator(cpus, eval_genome_fs_neat)
 
     start = datetime.now()
-    winner = pop.run(pe.evaluate, n=n)
+    winner = pop.run(pe.evaluate, n=generations)
     end = datetime.now()
+    means = stats.get_fitness_mean()
+    maxes = stats.get_fitness_stat(max)
 
-    print(f"Duration: {end-start}")
+    return end-start, means, maxes, winner
+
+
+if __name__ == '__main__':
+    multiprocessing.set_start_method('spawn')  # Comment this if not on MACOS
+
+    """
+    PARAMTER CHOICES
+    """
+    # Method
+    # method = "FS_NEAT
+    method = "ENGINEERED"
+
+    # Generations
+    n = 4
+
+    # Number of CPUs
+    # cpus = multiprocessing.cpu_count()
+    cpus = 2
+
+    run_experiment(method, n, cpus)
+
+
+
