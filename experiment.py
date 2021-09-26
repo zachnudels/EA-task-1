@@ -54,6 +54,36 @@ def eval_genome_feat_eng(genome, config):
 
     return min(fitnesses)
 
+def run_final_experiment():
+    ## RUN FINAL EXPERIMENT
+
+    # run first EA
+
+    # run for 3 individual enemies
+
+    for enemy in [1,3,5]:
+        # run 10 times with the same conditions and report average fitness per generation
+
+        mean_fitness_per_generation = []
+        max_fitness_per_generation = []
+        best_solutions = []
+        for run in range(10):
+            # run fitting
+            pass
+
+            # for each generation save the maximum fitness and the mean fitness of the population
+
+            # save best solution
+
+        final_best_solution = np.argmax(best_solutions) # TODO this is only the logic - adjust to how the best solution is actually stored
+
+        avg_mean_fitness_per_generation = np.mean(mean_fitness_per_generation)
+        std_mean_fitness_per_generation = np.std(mean_fitness_per_generation)
+        avg_max_fitness_per_generation = np.mean(max_fitness_per_generation)
+        std_max_fitness_per_generation = np.std(max_fitness_per_generation)
+
+    # make a plot 
+
 
 
 if __name__ == '__main__':
