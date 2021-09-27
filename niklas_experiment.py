@@ -104,8 +104,8 @@ def run_final_experiment():
             for run in range(runs):
 
                 # FOR TESTING SWITCH THE TWO LINES BELOW
-                # duration, means, maxes, winner = run_experiment(method, generations, cpus, enemy, run)
-                duration, means, maxes, winner = random.uniform(100, 500), np.random.uniform(low=10.0, high=60.0, size=(generations,)), np.random.uniform(low=60.0, high=100.0, size=(generations,)), random.uniform(0, 1)
+                duration, means, maxes, winner = run_experiment(method, generations, cpus, enemy, run)
+                # duration, means, maxes, winner = random.uniform(100, 500), np.random.uniform(low=10.0, high=60.0, size=(generations,)), np.random.uniform(low=60.0, high=100.0, size=(generations,)), random.uniform(0, 1)
 
                 durations.append(durations)
                 mean_fit_per_gen.append(means)
