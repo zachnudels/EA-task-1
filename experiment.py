@@ -9,6 +9,8 @@ from datetime import datetime
 import platform
 
 import numpy as np
+from matplotlib import pyplot as plt
+import random
 
 experiment_name = 'individual_demo'
 env = Environment(experiment_name=experiment_name,
@@ -46,11 +48,45 @@ def eval_genome_feat_eng(genome, config):
     controller = EngineeredRNNController(net, TIME_CONST)
     return eval_genome(controller, net)
 
+def evaluate_winners(winners, method, enemy, plot_dir):
+    local_dir = os.path.dirname('evoman')
+    config_path = os.path.join(local_dir, f"{method}.cfg")
+    config = neat.Config(neat.DefaultGenome, neat.DefaultReproduction,
+                         neat.DefaultSpeciesSet, neat.DefaultStagnation,
+                         config_path
+                         )
+
+    mean_fitnesses = []
+    for winner in winners:
+        fitnesses = []
+        for run in range(5):
+            # play game and get fitness
+            fitness = -1
+            if method == "ENGINEERED":
+                fitness = eval_genome_feat_eng(winner, config)
+            elif method == "FS_NEAT":
+                fitness = eval_genome_fs_neat(winner, config)
+            fitnesses.append(fitness)
+
+        mean_fitnesses.append(np.mean(fitnesses))
+
+    # make boxplot
+
+    plt.boxplot(mean_fitnesses)      
+    plt.savefig(f'{plot_dir}/ind_gain__{enemy}_{method}.pdf') 
+    plt.savefig(f'{plot_dir}/ind_gain__{enemy}_{method}.png') 
+
+
 
 def run_final_experiment():
     generations = 100
     cpus = multiprocessing.cpu_count()
     runs = 10
+
+    plot_dir = 'final_experiment_plots'
+    if (not os.path.exists(f'./{plot_dir}/')):
+        os.mkdir(f'./{plot_dir}/')
+    
 
     if platform.system() == 'Darwin':
         multiprocessing.set_start_method('spawn')  # Comment this if not on MACOS
@@ -62,24 +98,47 @@ def run_final_experiment():
         for enemy in [1, 3, 5]:
             # run 10 times with the same conditions and report average fitness per generation
             durations = []
-            mean_fitness_per_generation = []
-            max_fitness_per_generation = []
-            best_solutions = []
+            mean_fit_per_gen = []
+            max_fit_per_gen = []
+            winners = []
             for run in range(runs):
+
+                # FOR TESTING SWITCH THE TWO LINES BELOW
                 duration, means, maxes, winner = run_experiment(method, generations, cpus, enemy)
+                # duration, means, maxes, winner = random.uniform(100, 500), np.random.uniform(low=10.0, high=60.0, size=(generations,)), np.random.uniform(low=60.0, high=100.0, size=(generations,)), random.uniform(0, 1)
+
                 durations.append(durations)
-                mean_fitness_per_generation.append(means)
-                max_fitness_per_generation.append(maxes)
-                best_solutions.append(winner)
+                mean_fit_per_gen.append(means)
+                max_fit_per_gen.append(maxes)
+                winners.append(winner)
 
-            # final_best_solution = np.argmax(best_solutions) # TODO this is only the logic - adjust to how the best solution is actually stored
+            avg_mean_fit_per_gen = np.mean(mean_fit_per_gen, axis=0)
+            std_mean_fit_per_gen = np.std(mean_fit_per_gen, axis=0)
+            avg_max_fit_per_gen = np.mean(max_fit_per_gen, axis=0)
+            std_max_fit_per_gen = np.std(max_fit_per_gen, axis=0)
 
-            avg_mean_fitness_per_generation = np.mean(mean_fitness_per_generation)
-            std_mean_fitness_per_generation = np.std(mean_fitness_per_generation)
-            avg_max_fitness_per_generation = np.mean(max_fitness_per_generation)
-            std_max_fitness_per_generation = np.std(max_fitness_per_generation)
+            # make a plot
+            # plot average mean fitness per generation
+            
+            plt.plot(avg_mean_fit_per_gen, '-', label='Average mean')
+            plt.fill_between(range(generations), avg_mean_fit_per_gen-std_mean_fit_per_gen, avg_mean_fit_per_gen+std_mean_fit_per_gen, alpha = 0.5)
 
-        # make a plot
+            plt.plot(avg_max_fit_per_gen, '-', label='Average max')
+            plt.fill_between(range(generations), avg_max_fit_per_gen-std_max_fit_per_gen, avg_max_fit_per_gen+std_max_fit_per_gen, alpha = 0.5)
+
+            # plt.plot(std_mean_fit_per_gen, '-', label='Std mean')
+            # plt.plot(std_max_fit_per_gen, '-', label='Std max')
+
+
+            plt.xlabel('Fitness measures')
+            plt.ylabel('Generations')
+            plt.title(f'Enemy {enemy} against {method} EA')
+            plt.legend()
+            plt.savefig(f'./{plot_dir}/final_exp_plot_{enemy}_{method}.pdf')
+            plt.savefig(f'./{plot_dir}/final_exp_plot_{enemy}_{method}.png')
+            plt.show()
+
+            evaluate_winners(winners, method, enemy, plot_dir)
 
 
 def run_experiment(method, generations, cpus, enemy):
