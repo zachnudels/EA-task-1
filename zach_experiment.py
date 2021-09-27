@@ -93,9 +93,9 @@ def run_final_experiment():
 
 
     # run first EA
-    for method in ["ENGINEERED", "FS_NEAT"]:
+    for method in ["FS_NEAT"]:
         # run for 3 individual enemies
-        for enemy in [1, 3, 5]:
+        for enemy in [1]:
             # run 10 times with the same conditions and report average fitness per generation
             durations = []
             mean_fit_per_gen = []
