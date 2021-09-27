@@ -136,7 +136,7 @@ def run_final_experiment():
             plt.legend()
             plt.savefig(f'./{plot_dir}/final_exp_plot_{enemy}_{method}.pdf')
             plt.savefig(f'./{plot_dir}/final_exp_plot_{enemy}_{method}.png')
-            plt.show()
+            # plt.show()
 
             evaluate_winners(winners, method, enemy, plot_dir)
 
