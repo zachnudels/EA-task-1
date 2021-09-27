@@ -72,6 +72,7 @@ def evaluate_winners(winners, method, enemy, plot_dir):
 
     # make boxplot
 
+    np.savetxt(f'{plot_dir}/winner_mean_fitnesses_{enemy}_{method}.csv', mean_fitnesses, delimiter=',')
     plt.boxplot(mean_fitnesses)      
     plt.savefig(f'{plot_dir}/ind_gain__{enemy}_{method}.pdf') 
     plt.savefig(f'{plot_dir}/ind_gain__{enemy}_{method}.png') 
@@ -107,7 +108,7 @@ def run_final_experiment():
                 duration, means, maxes, winner = run_experiment(method, generations, cpus, enemy, run)
                 # duration, means, maxes, winner = random.uniform(100, 500), np.random.uniform(low=10.0, high=60.0, size=(generations,)), np.random.uniform(low=60.0, high=100.0, size=(generations,)), random.uniform(0, 1)
 
-                durations.append(durations)
+                durations.append(duration)
                 mean_fit_per_gen.append(means)
                 max_fit_per_gen.append(maxes)
                 winners.append(winner)

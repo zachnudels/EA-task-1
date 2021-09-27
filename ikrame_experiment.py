@@ -72,6 +72,7 @@ def evaluate_winners(winners, method, enemy, plot_dir):
 
     # make boxplot
 
+    np.savetxt(f'{plot_dir}/winner_mean_fitnesses_{enemy}_{method}.csv', mean_fitnesses, delimiter=',')
     plt.boxplot(mean_fitnesses)      
     plt.savefig(f'{plot_dir}/ind_gain__{enemy}_{method}.pdf') 
     plt.savefig(f'{plot_dir}/ind_gain__{enemy}_{method}.png') 
@@ -107,7 +108,7 @@ def run_final_experiment():
                 duration, means, maxes, winner = run_experiment(method, generations, cpus, enemy, run)
                 # duration, means, maxes, winner = random.uniform(100, 500), np.random.uniform(low=10.0, high=60.0, size=(generations,)), np.random.uniform(low=60.0, high=100.0, size=(generations,)), random.uniform(0, 1)
 
-                durations.append(durations)
+                durations.append(duration)
                 mean_fit_per_gen.append(means)
                 max_fit_per_gen.append(maxes)
                 winners.append(winner)
@@ -116,6 +117,9 @@ def run_final_experiment():
             std_mean_fit_per_gen = np.std(mean_fit_per_gen, axis=0)
             avg_max_fit_per_gen = np.mean(max_fit_per_gen, axis=0)
             std_max_fit_per_gen = np.std(max_fit_per_gen, axis=0)
+
+            # avg_durations = np.mean(durations, axis=0)
+            # std_durations = np.std(durations, axis=0)
 
             # make a plot
             # plot average mean fitness per generation
@@ -137,6 +141,14 @@ def run_final_experiment():
             plt.savefig(f'./{plot_dir}/final_exp_plot_{enemy}_{method}.pdf')
             plt.savefig(f'./{plot_dir}/final_exp_plot_{enemy}_{method}.png')
             # plt.show()
+
+            np.savetxt(f'{plot_dir}/10run_avg_mean_fitnesses_{enemy}_{method}.csv', avg_mean_fit_per_gen, delimiter=',')
+            np.savetxt(f'{plot_dir}/10run_avg_max_fitnesses_{enemy}_{method}.csv', avg_max_fit_per_gen, delimiter=',')
+            np.savetxt(f'{plot_dir}/10run_std_mean_fitnesses_{enemy}_{method}.csv', std_mean_fit_per_gen, delimiter=',')
+            np.savetxt(f'{plot_dir}/10run_std_max_fitnesses_{enemy}_{method}.csv', std_max_fit_per_gen, delimiter=',')
+
+            np.savetxt(f'{plot_dir}/10run_durations_{enemy}_{method}.csv', durations, delimiter=',')
+            # np.savetxt(f'{plot_dir}/10run_std_durations_{enemy}_{method}.csv', std_durations, delimiter=',')
 
             evaluate_winners(winners, method, enemy, plot_dir)
 
