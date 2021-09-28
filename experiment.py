@@ -91,14 +91,15 @@ def run_final_experiment(methods, enemies):
     runs = 10
 
     plot_dir = 'final_experiment_plots'
-    if not os.path.exists(f'./{plot_dir}/'):
-        os.mkdir(f'./{plot_dir}/')
+    plot_path = Path(plot_dir)
+    if not plot_path.exists():
+        plot_path.mkdir(parents=True, exist_ok=True)
 
     # run first EA
     for method in [methods]:
         # run for 3 individual enemies
         for enemy in [enemies]:
-            path = Path(f"{enemy}/{method}/")
+            path = Path(f"checkpoints/{enemy}/{method}/")
             if not path.exists():
                 path.mkdir(parents=True, exist_ok=True)
 
