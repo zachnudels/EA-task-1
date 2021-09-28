@@ -1,6 +1,6 @@
 import sys
 sys.path.insert(0, 'evoman')
-
+from pathlib import Path
 from environment import Environment
 import neat, multiprocessing, os, pickle
 from rnn_controller import RNNController
@@ -14,11 +14,12 @@ import random
 
 experiment_name = 'individual_demo'
 env = Environment(experiment_name=experiment_name,
-                      playermode="ai",
-                      enemymode="static",
-                      level=2,
-                      speed="fastest",
-                      logs="off")
+                    playermode="ai",
+                    enemymode="static",
+                    level=2,
+                    randomini="yes",
+                    speed="fastest",
+                    logs="off")
 
 
 os.environ["SDL_VIDEODRIVER"] = "dummy"
@@ -88,10 +89,6 @@ def run_final_experiment():
     if (not os.path.exists(f'./{plot_dir}/')):
         os.mkdir(f'./{plot_dir}/')
     
-
-    if platform.system() == 'Darwin':
-        multiprocessing.set_start_method('spawn')  # Comment this if not on MACOS
-
 
     # run first EA
     for method in ["FS_NEAT"]:
@@ -178,8 +175,11 @@ def run_experiment(method, generations, cpus, enemy, run):
     pop = neat.Population(config)
     stats = neat.StatisticsReporter()
     pop.add_reporter(stats)
-    # pop.add_reporter(neat.StdOutReporter(True))
-    pop.add_reporter(neat.Checkpointer(5, 300, f"{method}-{run}-"))
+    pop.add_reporter(neat.StdOutReporter(True))
+    path = Path(f"{enemy}/{method}/{run}/")
+    if not path.exists():
+        path.mkdir(parents=True, exist_ok=True)
+    pop.add_reporter(neat.Checkpointer(5, 300, str(path)+"/"))
 
     env.enemies = [enemy]
     pe = None
@@ -203,6 +203,9 @@ if __name__ == '__main__':
     # n = 4
     # c = 2
     # run_experiment(m, n, c, 8)
+    if platform.system() == 'Darwin':
+        multiprocessing.set_start_method('spawn')  # Comment this if not on MACOS
+
     run_final_experiment()
 
 
