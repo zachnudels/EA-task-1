@@ -130,9 +130,8 @@ def run_final_experiment():
             # plt.plot(std_mean_fit_per_gen, '-', label='Std mean')
             # plt.plot(std_max_fit_per_gen, '-', label='Std max')
 
-
-            plt.xlabel('Fitness measures')
-            plt.ylabel('Generations')
+            plt.xlabel('Generations')
+            plt.ylabel('Fitness measures')
             plt.title(f'Enemy {enemy} against {method} EA')
             plt.legend()
             plt.savefig(f'./{plot_dir}/final_exp_plot_{enemy}_{method}.pdf')
