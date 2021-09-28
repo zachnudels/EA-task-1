@@ -24,7 +24,7 @@ env = Environment(experiment_name=experiment_name,
 
 os.environ["SDL_VIDEODRIVER"] = "dummy"
 TIME_CONST = 0.001
-runs_per_net = 5
+runs_per_net = 1
 
 
 def eval_genome(controller, net, r_all):
