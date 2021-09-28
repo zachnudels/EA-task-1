@@ -67,6 +67,7 @@ def evaluate_winners(winners, method, plot_dir):
 
     all_gains = []
     for winner in winners:
+        print(f"Fitness = {winner.fitness}")
         gains = []
         for _ in range(5):
             p = 0
@@ -206,9 +207,10 @@ def run_experiment(method, generations, cpus, enemy, run, path):
     end = datetime.now()
     means = stats.get_fitness_mean()
     maxes = stats.get_fitness_stat(max)
-    best_size = stats.best_genome().size()
+    best_genome = max(stats.best_genomes(len(stats.get_species_sizes())), key=lambda x: x.fitness)
+    best_size = best_genome.size()
 
-    return end - start, means, maxes, winner, best_size
+    return end - start, means, maxes, best_genome, best_size
 
 
 if __name__ == '__main__':
