@@ -24,32 +24,40 @@ env = Environment(experiment_name=experiment_name,
 
 os.environ["SDL_VIDEODRIVER"] = "dummy"
 TIME_CONST = 0.001
-runs_per_net = 1
+runs_per_net = 5
 
 
-def eval_genome(controller, net):
+def eval_genome(controller, net, r_all):
     env.player_controller = controller
     fitnesses = []
+    player = []
+    enemy = []
     for runs in range(runs_per_net):
         net.reset()
         fitness, p, e, t = env.play(pcont=controller)
         fitnesses.append(fitness)
+        player.append(p)
+        enemy.append(e)
+    i = fitnesses.index(min(fitnesses))
+    if r_all:
+        return fitnesses[i], player[i], enemy[i]
+    else:
+        return min(fitnesses)
 
-    return min(fitnesses)
 
-
-def eval_genome_fs_neat(genome, config):
+def eval_genome_fs_neat(genome, config, r_all=False):
     net = neat.ctrnn.CTRNN.create(genome, config, TIME_CONST)
     controller = RNNController(net, TIME_CONST)
-    return eval_genome(controller, net)
+    return eval_genome(controller, net, r_all)
 
 
-def eval_genome_feat_eng(genome, config):
+def eval_genome_feat_eng(genome, config, r_all=False):
     net = neat.ctrnn.CTRNN.create(genome, config, TIME_CONST)
     controller = EngineeredRNNController(net, TIME_CONST)
-    return eval_genome(controller, net)
+    return eval_genome(controller, net, r_all)
 
-def evaluate_winners(winners, method, enemy, plot_dir):
+
+def evaluate_winners(winners, method, plot_dir):
     local_dir = os.path.dirname('evoman')
     config_path = os.path.join(local_dir, f"{method}.cfg")
     config = neat.Config(neat.DefaultGenome, neat.DefaultReproduction,
@@ -57,26 +65,24 @@ def evaluate_winners(winners, method, enemy, plot_dir):
                          config_path
                          )
 
-    mean_fitnesses = []
+    all_gains = []
     for winner in winners:
-        fitnesses = []
-        for run in range(5):
-            # play game and get fitness
-            fitness = -1
+        gains = []
+        for _ in range(5):
+            p = 0
+            e = 0
             if method == "ENGINEERED":
-                fitness = eval_genome_feat_eng(winner, config)
+                _, p, e = eval_genome_feat_eng(winner, config, True)
             elif method == "FS_NEAT":
-                fitness = eval_genome_fs_neat(winner, config)
-            fitnesses.append(fitness)
-
-        mean_fitnesses.append(np.mean(fitnesses))
+                _, p, e = eval_genome_fs_neat(winner, config, True)
+            gains.append(p-e)
+        all_gains.append(np.mean(gains))
 
     # make boxplot
-
-    np.savetxt(f'{plot_dir}/winner_mean_fitnesses_{enemy}_{method}.csv', mean_fitnesses, delimiter=',')
-    plt.boxplot(mean_fitnesses)      
-    plt.savefig(f'{plot_dir}/ind_gain__{enemy}_{method}.pdf') 
-    plt.savefig(f'{plot_dir}/ind_gain__{enemy}_{method}.png') 
+    np.savetxt(f'{plot_dir}/gains.csv', all_gains, delimiter=',')
+    plt.boxplot(all_gains)
+    plt.savefig(f'{plot_dir}/ind_gain.pdf')
+    plt.savefig(f'{plot_dir}/ind_gain.png')
 
 
 
@@ -86,7 +92,7 @@ def run_final_experiment():
     runs = 10
 
     plot_dir = 'final_experiment_plots'
-    if (not os.path.exists(f'./{plot_dir}/')):
+    if not os.path.exists(f'./{plot_dir}/'):
         os.mkdir(f'./{plot_dir}/')
     
 
@@ -94,18 +100,26 @@ def run_final_experiment():
     for method in ["FS_NEAT"]:
         # run for 3 individual enemies
         for enemy in [1]:
+            path = Path(f"{enemy}/{method}/")
+            if not path.exists():
+                path.mkdir(parents=True, exist_ok=True)
+
+            spec_plot_dir = f'./{plot_dir}/{enemy}/{method}/'
+            spec_plot_path = Path(spec_plot_dir)
+            if not spec_plot_path.exists():
+                spec_plot_path.mkdir(parents=True, exist_ok=True)
+
             # run 10 times with the same conditions and report average fitness per generation
-            durations = []
+            # durations = []
             mean_fit_per_gen = []
             max_fit_per_gen = []
             winners = []
             for run in range(runs):
 
                 # FOR TESTING SWITCH THE TWO LINES BELOW
-                duration, means, maxes, winner = run_experiment(method, generations, cpus, enemy, run)
+                duration, means, maxes, winner = run_experiment(method, generations, cpus, enemy, run, path)
                 # duration, means, maxes, winner = random.uniform(100, 500), np.random.uniform(low=10.0, high=60.0, size=(generations,)), np.random.uniform(low=60.0, high=100.0, size=(generations,)), random.uniform(0, 1)
 
-                durations.append(duration)
                 mean_fit_per_gen.append(means)
                 max_fit_per_gen.append(maxes)
                 winners.append(winner)
@@ -115,47 +129,42 @@ def run_final_experiment():
             avg_max_fit_per_gen = np.mean(max_fit_per_gen, axis=0)
             std_max_fit_per_gen = np.std(max_fit_per_gen, axis=0)
 
-            # avg_durations = np.mean(durations, axis=0)
-            # std_durations = np.std(durations, axis=0)
 
             # make a plot
             # plot average mean fitness per generation
-            
+
             plt.plot(range(generations), avg_mean_fit_per_gen, '-', label='Average mean')
             plt.fill_between(range(generations), avg_mean_fit_per_gen-std_mean_fit_per_gen, avg_mean_fit_per_gen+std_mean_fit_per_gen, alpha = 0.5)
 
             plt.plot(range(generations), avg_max_fit_per_gen, '-', label='Average max')
             plt.fill_between(range(generations), avg_max_fit_per_gen-std_max_fit_per_gen, avg_max_fit_per_gen+std_max_fit_per_gen, alpha = 0.5)
 
-            # plt.plot(std_mean_fit_per_gen, '-', label='Std mean')
-            # plt.plot(std_max_fit_per_gen, '-', label='Std max')
-
             plt.xlabel('Generations')
             plt.ylabel('Fitness measures')
             plt.title(f'Enemy {enemy} against {method} EA')
             plt.legend()
-            plt.savefig(f'./{plot_dir}/final_exp_plot_{enemy}_{method}.pdf')
-            plt.savefig(f'./{plot_dir}/final_exp_plot_{enemy}_{method}.png')
+            plt.savefig(f'{spec_plot_dir}/final_exp_plot.pdf')
+            plt.savefig(f'{spec_plot_dir}/final_exp_plot.png')
+            plt.close()
             # plt.show()
 
-            np.savetxt(f'{plot_dir}/10run_avg_mean_fitnesses_{enemy}_{method}.csv', avg_mean_fit_per_gen, delimiter=',')
-            np.savetxt(f'{plot_dir}/10run_avg_max_fitnesses_{enemy}_{method}.csv', avg_max_fit_per_gen, delimiter=',')
-            np.savetxt(f'{plot_dir}/10run_std_mean_fitnesses_{enemy}_{method}.csv', std_mean_fit_per_gen, delimiter=',')
-            np.savetxt(f'{plot_dir}/10run_std_max_fitnesses_{enemy}_{method}.csv', std_max_fit_per_gen, delimiter=',')
+            np.savetxt(f'{spec_plot_dir}/10run_avg_mean_fitnesses.csv', avg_mean_fit_per_gen, delimiter=',')
+            np.savetxt(f'{spec_plot_dir}/10run_avg_max_fitnesses.csv', avg_max_fit_per_gen, delimiter=',')
+            np.savetxt(f'{spec_plot_dir}/10run_std_mean_fitnesses.csv', std_mean_fit_per_gen, delimiter=',')
+            np.savetxt(f'{spec_plot_dir}/10run_std_max_fitnesses.csv', std_max_fit_per_gen, delimiter=',')
 
-            np.savetxt(f'{plot_dir}/10run_durations_{enemy}_{method}.csv', durations, delimiter=',')
-            # np.savetxt(f'{plot_dir}/10run_std_durations_{enemy}_{method}.csv', std_durations, delimiter=',')
-
-            evaluate_winners(winners, method, enemy, plot_dir)
+            evaluate_winners(winners, method, spec_plot_dir)
 
 
-def run_experiment(method, generations, cpus, enemy, run):
+def run_experiment(method, generations, cpus, enemy, run, path):
     """
     Parameters:
         method:string ENGINEERED | FS_NEAT,
         generations:int number of generations to run,
         cpus:int number of cpus to use during run
         enemy:int enemy to run against
+        run:int iteration
+        path:Path working dir
     Returns:
         duration:datetime time of experiment,
         means:array[float] mean fitness of each generation,
@@ -175,9 +184,10 @@ def run_experiment(method, generations, cpus, enemy, run):
     stats = neat.StatisticsReporter()
     pop.add_reporter(stats)
     pop.add_reporter(neat.StdOutReporter(True))
-    path = Path(f"{enemy}/{method}/{run}/")
-    if not path.exists():
-        path.mkdir(parents=True, exist_ok=True)
+    run_path = path.joinpath(Path(f"{run}/"))
+    if not run_path.exists():
+        run_path.mkdir(parents=True, exist_ok=True)
+
     pop.add_reporter(neat.Checkpointer(5, 300, str(path)+"/"))
 
     env.enemies = [enemy]
@@ -198,10 +208,6 @@ def run_experiment(method, generations, cpus, enemy, run):
 
 
 if __name__ == '__main__':
-    # m = "ENGINEERED"
-    # n = 4
-    # c = 2
-    # run_experiment(m, n, c, 8)
     if platform.system() == 'Darwin':
         multiprocessing.set_start_method('spawn')  # Comment this if not on MACOS
 
