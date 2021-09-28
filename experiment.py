@@ -191,7 +191,7 @@ def run_experiment(method, generations, cpus, enemy, run, path):
     if not run_path.exists():
         run_path.mkdir(parents=True, exist_ok=True)
 
-    pop.add_reporter(neat.Checkpointer(5, 300, str(path) + "/"))
+    pop.add_reporter(neat.Checkpointer(5, 300, str(run_path) + "/"))
 
     env.enemies = [enemy]
     pe = None
