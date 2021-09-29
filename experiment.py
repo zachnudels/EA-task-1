@@ -67,7 +67,6 @@ def evaluate_winners(winners, method, plot_dir):
 
     all_gains = []
     for winner in winners:
-        print(f"Fitness = {winner.fitness}")
         gains = []
         for _ in range(5):
             p = 0
@@ -116,8 +115,12 @@ def run_final_experiment(methods, enemies):
             winners = []
             best_sizes = []
             for run in range(runs):
+                run_path = path.joinpath(Path(f"{run}/"))
+                if not run_path.exists():
+                    run_path.mkdir(parents=True, exist_ok=True)
+
                 # FOR TESTING SWITCH THE TWO LINES BELOW
-                duration, means, maxes, winner, best_size = run_experiment(method, generations, cpus, enemy, run, path)
+                duration, means, maxes, winner, best_size = run_experiment(method, cpus, enemy, run_path)
                 # duration, means, maxes, winner = random.uniform(100, 500), np.random.uniform(low=10.0, high=60.0, size=(generations,)), np.random.uniform(low=60.0, high=100.0, size=(generations,)), random.uniform(0, 1)
 
                 mean_fit_per_gen.append(means)
@@ -160,7 +163,7 @@ def run_final_experiment(methods, enemies):
             evaluate_winners(winners, method, spec_plot_dir)
 
 
-def run_experiment(method, generations, cpus, enemy, run, path):
+def run_experiment(method, cpus, enemy, run_path):
     """
     Parameters:
         method:string ENGINEERED | FS_NEAT,
@@ -188,10 +191,6 @@ def run_experiment(method, generations, cpus, enemy, run, path):
     stats = neat.StatisticsReporter()
     pop.add_reporter(stats)
     pop.add_reporter(neat.StdOutReporter(True))
-    run_path = path.joinpath(Path(f"{run}/"))
-    if not run_path.exists():
-        run_path.mkdir(parents=True, exist_ok=True)
-
     pop.add_reporter(neat.Checkpointer(5, 300, str(run_path) + "/"))
 
     env.enemies = [enemy]
@@ -203,14 +202,12 @@ def run_experiment(method, generations, cpus, enemy, run, path):
         pe = neat.ParallelEvaluator(cpus, eval_genome_fs_neat)
 
     start = datetime.now()
-    winner = pop.run(pe.evaluate, n=generations)
     end = datetime.now()
     means = stats.get_fitness_mean()
     maxes = stats.get_fitness_stat(max)
     best_genome = max(stats.best_genomes(len(stats.get_species_sizes())), key=lambda x: x.fitness)
-    best_size = best_genome.size()
 
-    return end - start, means, maxes, best_genome, best_size
+    return end - start, means, maxes, best_genome, best_genome.size()
 
 
 if __name__ == '__main__':
