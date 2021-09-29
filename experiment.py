@@ -120,7 +120,7 @@ def run_final_experiment(methods, enemies):
                     run_path.mkdir(parents=True, exist_ok=True)
 
                 # FOR TESTING SWITCH THE TWO LINES BELOW
-                duration, means, maxes, winner, best_size = run_experiment(method, cpus, enemy, run_path)
+                duration, means, maxes, winner, best_size = run_experiment(method, cpus, generations, enemy, run_path)
                 # duration, means, maxes, winner = random.uniform(100, 500), np.random.uniform(low=10.0, high=60.0, size=(generations,)), np.random.uniform(low=60.0, high=100.0, size=(generations,)), random.uniform(0, 1)
 
                 mean_fit_per_gen.append(means)
@@ -163,7 +163,7 @@ def run_final_experiment(methods, enemies):
             evaluate_winners(winners, method, spec_plot_dir)
 
 
-def run_experiment(method, cpus, enemy, run_path):
+def run_experiment(method, cpus, generations, enemy, run_path):
     """
     Parameters:
         method:string ENGINEERED | FS_NEAT,
@@ -203,6 +203,7 @@ def run_experiment(method, cpus, enemy, run_path):
 
     start = datetime.now()
     end = datetime.now()
+    pop.run(pe.evaluate, n=generations)
     means = stats.get_fitness_mean()
     maxes = stats.get_fitness_stat(max)
     best_genome = max(stats.best_genomes(len(stats.get_species_sizes())), key=lambda x: x.fitness)
