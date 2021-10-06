@@ -163,7 +163,7 @@ def run_final_experiment(methods, enemies):
             evaluate_winners(winners, method, spec_plot_dir)
 
 
-def run_experiment(method, cpus, generations, enemy, run_path):
+def run_experiment(method, cpus, generations, enemy, run_path, config = None):
     """
     Parameters:
         method:string ENGINEERED | FS_NEAT,
@@ -181,11 +181,12 @@ def run_experiment(method, cpus, generations, enemy, run_path):
 
     local_dir = os.path.dirname('evoman')
 
-    config_path = os.path.join(local_dir, f"{method}.cfg")
-    config = neat.Config(neat.DefaultGenome, neat.DefaultReproduction,
-                         neat.DefaultSpeciesSet, neat.DefaultStagnation,
-                         config_path
-                         )
+    if config is None:  # Use default for this method
+        config_path = os.path.join(local_dir, f"{method}.cfg")
+        config = neat.Config(neat.DefaultGenome, neat.DefaultReproduction,
+                             neat.DefaultSpeciesSet, neat.DefaultStagnation,
+                             config_path
+                             )
 
     pop = neat.Population(config)
     stats = neat.StatisticsReporter()
@@ -203,12 +204,12 @@ def run_experiment(method, cpus, generations, enemy, run_path):
 
     start = datetime.now()
     end = datetime.now()
-    pop.run(pe.evaluate, n=generations)
+    winner = pop.run(pe.evaluate, n=generations)
     means = stats.get_fitness_mean()
     maxes = stats.get_fitness_stat(max)
     best_genome = max(stats.best_genomes(len(stats.get_species_sizes())), key=lambda x: x.fitness)
 
-    return end - start, means, maxes, best_genome, best_genome.size()
+    return end - start, means, maxes, best_genome, best_genome.size(), winner
 
 
 if __name__ == '__main__':
