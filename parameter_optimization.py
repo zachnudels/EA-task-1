@@ -97,35 +97,38 @@ if __name__ == '__main__':
     method = "FS_NEAT"
     generations = 1
     cpus = 2
-    enemies = [1,2,4,5]
-    max_trials = 5
+    enemies = [1, 2, 4, 5]
+    enemy_string = "".join([str(x) for x in enemies])
     # trial_steps = 1
 
     trials = None
-    if (sys.argv[1] == "save"):
-        trials = Trials()
-        if (len(sys.argv) > 2):
-            max_trials = int(sys.argv[2])
-    elif (sys.argv[1] == "load"):
-        try:
-            trials = pickle.load(open(sys.argv[2], "rb"))
-            print("Found saved trials. Loading...")
-            if (len(sys.argv) > 3):
-                max_trials = int(sys.argv[3])
 
-            # max_trials = len(trials.trials) + trial_steps
-        except Exception:
-            print("Could not load saved trials")
-            trials = Trials()
+    try:
+        max_trials = int(sys.argv[1])
+    except ValueError as e:
+        print("No max_trials specified. Default is 100.")
+        max_trials = 100
 
-    print(f"Running additional {max_trials} trials")
+    if len(sys.argv) > 2:
+        if sys.argv[2] == "load":
+            print("Loading Trials object. Continuing where you left off :)")
+            try:
+                trials = pickle.load(open(f"param_opt_results/{method}/{enemy_string}/trials.p", "rb"))
+                print("Found saved trials. Loading...")
+            except Exception as err:
+                print(f"Could not load saved trials: {err}")
+                trials = Trials()
+        else:
+            print(f"Cannot understand argument {sys.argv[2]}")
+            raise ValueError
+
+    print(f"Running {max_trials} trials")
 
     solution, trials = optimize(method, generations, cpus, enemies, trials, max_trials)
 
-    result_path = Path(f"param_opt_results/{method}/{''.join([str(x) for x in enemies])}")
+    result_path = Path(f"param_opt_results/{method}/{enemy_string}")
     if not result_path.exists():
         result_path.mkdir(parents=True, exist_ok=True)
-
 
     with open(f"{result_path}/trials.p", "wb") as f:
         pickle.dump(trials, f)
