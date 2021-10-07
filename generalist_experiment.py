@@ -118,7 +118,7 @@ def evaluate_winners(winners, method, plot_dir):
 
 def run_final_experiment(methods, groups):
     generations = 1
-    cpus = 1 # multiprocessing.cpu_count() - 1
+    cpus = 1  # multiprocessing.cpu_count() - 1
     runs = 1
 
     plot_dir = 'results_generalist'
