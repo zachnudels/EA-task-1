@@ -6,13 +6,12 @@ from datetime import datetime
 from demo_controller import player_controller
 
 
-
 class Individual:
     def __init__(self, weights=None, num_weights=None):
         if weights is None:
             if num_weights is None:
                 raise ValueError("If no weights specified, must specify number of random weights to initialize")
-            self.weights = np.array([random.uniform(-1,1) for _ in range(num_weights)])
+            self.weights = np.array([random.uniform(-1, 1) for _ in range(num_weights)])
         else:
             self.weights = np.array(weights)
 
@@ -42,8 +41,6 @@ class Individual:
 
     def __ge__(self, other):
         return self.fitness >= other.fitness
-
-
 
 
 def selection(population):
@@ -134,12 +131,12 @@ def evolve(population_size, num_generations, num_weights, mutate_new_inds, envir
         population = evaluate(population, environment)
         population = final_selection(population, population_size)
 
-        end = datetime.now()
-
         mean = np.mean([x.fitness for x in population])
         max = np.max([x.fitness for x in population])
+
+        end = datetime.now()
         print(f"Mean fitness: {mean}")
-        print(f"Mean fitness: {max}")
+        print(f"Max fitness: {max}")
         print(f"Duration: {end-start}")
         means.append(mean)
         maxes.append(max)
