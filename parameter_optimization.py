@@ -42,7 +42,7 @@ def objective(args, method, cpus, generations, enemy, run_path):
     config_path = Path(f"configs/{method}")
     if not config_path.exists():
         config_path.mkdir(parents=True, exist_ok=True)
-    config.save(filename=os.path.join(config_path, f"{method}_{datetime.now()}.cfg"))
+    config.save(filename=os.path.join(config_path, f"{method}_{datetime.now().strftime('%Y-%M-%d-%H-%M%S%f')}.cfg"))
 
     _, _, _, best, _, winner = run_experiment(method, cpus, generations, enemy, run_path, config)
     obj = 100 - best.fitness
