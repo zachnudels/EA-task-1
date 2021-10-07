@@ -2,8 +2,10 @@ import random
 from copy import deepcopy
 import numpy as np
 from datetime import datetime
+from math import isclose
 
 from demo_controller import player_controller
+from engineered_controller import EngineeredController
 
 
 class Individual:
@@ -108,22 +110,34 @@ def evaluate(population, environment):
     return population
 
 
-def evolve(population_size, num_generations, num_weights, mutate_new_inds, environment):
+def resample_population(population, population_size, num_weights):
+    population = sorted(population, reverse=True, key=lambda x: x.fitness)[:int(population_size // 2)]
+    for _ in range(int(population_size // 2)):
+        population.append(Individual(num_weights=num_weights))
+
+    return population
+
+
+def evolve(population_size, num_generations, num_weights, mutate_new_inds, environment, resample_gen):
     print("Initializing Population")
     #  randomly initialise pop
     population = [Individual(num_weights=num_weights) for _ in range(population_size)]
     population = evaluate(population, environment)
     means = []
     maxes = []
+    stagnant = False
 
     for generation in range(num_generations):
         print(f"\n\n==== Generation {generation} =====\n")
+        resampled = False
         start = datetime.now()
-        if generation != 0 and generation % 20 == 0:
-            print("Resetting half of population")
-            population = sorted(population, reverse=True, key=lambda x: x.fitness)[:int(population_size//2)]
-            for _ in range(int(population_size//2)):
-                population.append(Individual(num_weights=num_weights))
+        if stagnant:
+            resampled = True
+            stagnant = False
+            population = resample_population(population, population_size, num_weights)
+        elif generation != 0 and generation % resample_gen == 0:
+            resampled = True
+            population = resample_population(population, population_size, num_weights)
 
         parents = selection(population)
         parents, offspring = recombination(parents)
@@ -133,8 +147,15 @@ def evolve(population_size, num_generations, num_weights, mutate_new_inds, envir
 
         mean = np.mean([x.fitness for x in population])
         max = np.max([x.fitness for x in population])
+        if isclose(mean, max):
+            stagnant = True
 
         end = datetime.now()
+
+        if resampled:
+            print("Reset half of population")
+        if stagnant:
+            print("Population stagnant. Resetting in next generation.")
         print(f"Mean fitness: {mean}")
         print(f"Max fitness: {max}")
         print(f"Duration: {end-start}")
@@ -163,10 +184,10 @@ if __name__ == '__main__':
 
     # initializes simulation in multi evolution mode, for multiple static enemies.
     env = Environment(experiment_name=experiment_name,
-                      enemies=[7, 8],
+                      enemies=[1, 4, 6, 7],
                       multiplemode="yes",
                       playermode="ai",
-                      player_controller=player_controller(n_hidden_neurons),
+                      player_controller=EngineeredController(n_hidden_neurons),
                       enemymode="static",
                       level=2,
                       speed="fastest",
@@ -174,9 +195,15 @@ if __name__ == '__main__':
                       )
 
     # number of weights for multilayer with 10 hidden neurons.
-    n_vars = (env.get_num_sensors() + 1) * n_hidden_neurons + (n_hidden_neurons + 1) * 5
+    n_vars = (9 + 1) * n_hidden_neurons + (n_hidden_neurons + 1) * 5
 
-    best, means, maxes = evolve(10, 150, n_vars, 5, env)
+    best, means, maxes = evolve(population_size=10,
+                                num_generations=150,
+                                num_weights=n_vars,
+                                mutate_new_inds=5,
+                                environment=env,
+                                resample_gen=1
+                                )
     # print(best)
     print(means)
     print(maxes)
