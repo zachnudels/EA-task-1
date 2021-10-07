@@ -1,6 +1,7 @@
 import random
 from copy import deepcopy
 import numpy as np
+from datetime import datetime
 
 from demo_controller import player_controller
 
@@ -11,7 +12,7 @@ class Individual:
         if weights is None:
             if num_weights is None:
                 raise ValueError("If no weights specified, must specify number of random weights to initialize")
-            self.weights = np.array([random.random() for _ in range(num_weights)])
+            self.weights = np.array([random.uniform(-1,1) for _ in range(num_weights)])
         else:
             self.weights = np.array(weights)
 
@@ -29,6 +30,18 @@ class Individual:
 
     def __repr__(self):
         return ",".join([str(x) for x in self.weights])
+
+    def __le__(self, other):
+        return self.fitness <= other.fitness
+
+    def __lt__(self, other):
+        return self.fitness < other.fitness
+
+    def __gt__(self, other):
+        return self.fitness > other.fitness
+
+    def __ge__(self, other):
+        return self.fitness >= other.fitness
 
 
 
@@ -93,27 +106,45 @@ def evaluate(population, environment):
     # TODO CHECK THIS ASSUMPTION!
     for individual in population:
         if individual.fitness is None:
-            print(individual)
             f, p, e, t = environment.play(pcont=individual.weights)
             individual.fitness = f
     return population
 
 
 def evolve(population_size, num_generations, num_weights, mutate_new_inds, environment):
-    # randomly initialise pop
+    print("Initializing Population")
+    #  randomly initialise pop
     population = [Individual(num_weights=num_weights) for _ in range(population_size)]
     population = evaluate(population, environment)
+    means = []
+    maxes = []
 
     for generation in range(num_generations):
+        print(f"\n\n==== Generation {generation} =====\n")
+        start = datetime.now()
+        if generation != 0 and generation % 20 == 0:
+            print("Resetting half of population")
+            population = sorted(population, reverse=True, key=lambda x: x.fitness)[:int(population_size//2)]
+            for _ in range(int(population_size//2)):
+                population.append(Individual(num_weights=num_weights))
+
         parents = selection(population)
         parents, offspring = recombination(parents)
         population = mutate(parents, offspring, mutate_new_inds, num_generations, generation)
         population = evaluate(population, environment)
         population = final_selection(population, population_size)
 
+        end = datetime.now()
 
+        mean = np.mean([x.fitness for x in population])
+        max = np.max([x.fitness for x in population])
+        print(f"Mean fitness: {mean}")
+        print(f"Mean fitness: {max}")
+        print(f"Duration: {end-start}")
+        means.append(mean)
+        maxes.append(max)
 
-
+    return population[np.argmax(population)], means, maxes
 
 
 if __name__ == '__main__':
@@ -148,4 +179,7 @@ if __name__ == '__main__':
     # number of weights for multilayer with 10 hidden neurons.
     n_vars = (env.get_num_sensors() + 1) * n_hidden_neurons + (n_hidden_neurons + 1) * 5
 
-    evolve(5, 1, n_vars, 5, env)
+    best, means, maxes = evolve(10, 150, n_vars, 5, env)
+    # print(best)
+    print(means)
+    print(maxes)
