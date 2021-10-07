@@ -19,7 +19,7 @@ from multiprocessing import Pool
 TIME_CONST = 0.001
 runs_per_net = 1
 
-# os.environ["SDL_VIDEODRIVER"] = "dummy"
+os.environ["SDL_VIDEODRIVER"] = "dummy"
 
 experiment_name = 'individual_demo'
 env = Environment(experiment_name=experiment_name,
@@ -29,7 +29,7 @@ env = Environment(experiment_name=experiment_name,
                     randomini="no",
                     speed="fastest",
                     multiplemode="yes",
-                    logs="on")
+                    logs="off")
 
 class CustomParallelEvaluator(ParallelEvaluator):
     def __init__(self, num_workers, eval_function, timeout=None, enemies=None):
@@ -55,12 +55,12 @@ def eval_genome(controller, net, r_all, enemies):
     fitnesses = []
     player = []
     enemy = []
-    print(f"ENEMIES: {env.enemies}")
+    # print(f"ENEMIES: {env.enemies}")
     for runs in range(runs_per_net):
         net.reset()
-        print("START PLAY")
+        # print("START PLAY")
         fitness, p, e, t = env.play(pcont=controller)
-        print("FINISHED PLAY")
+        # print("FINISHED PLAY")
         fitnesses.append(fitness)
         player.append(p)
         enemy.append(e)
@@ -209,6 +209,9 @@ def run_experiment(method, cpus, generations, run_path, group=None, config=None)
 
     local_dir = os.path.dirname('evoman')
 
+    if cpus is None:
+        cpus = multiprocessing.cpu_count()
+
     if config is None:  # use default
         config_path = os.path.join(local_dir, f"{method}.cfg")
         config = neat.Config(neat.DefaultGenome, neat.DefaultReproduction,
@@ -232,12 +235,12 @@ def run_experiment(method, cpus, generations, run_path, group=None, config=None)
 
     start = datetime.now()
     end = datetime.now()
-    pop.run(pe.evaluate, n=generations)
+    winner = pop.run(pe.evaluate, n=generations)
     means = stats.get_fitness_mean()
     maxes = stats.get_fitness_stat(max)
     best_genome = max(stats.best_genomes(len(stats.get_species_sizes())), key=lambda x: x.fitness)
 
-    return end - start, means, maxes, best_genome, best_genome.size()
+    return end - start, means, maxes, best_genome, best_genome.size(), winner
 
 
 if __name__ == '__main__':

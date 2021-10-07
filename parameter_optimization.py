@@ -38,11 +38,10 @@ def objective(args, method, cpus, group, generations, run_path):
     # config.genome_config.compatibility_disjoint_coefficient = compatibility_disjoint_coefficient
     # config.genome_config.compatibility_weight_coefficient = compatibility_weight_coefficient
 
-
     config_path = Path(f"configs/{method}")
     if not config_path.exists():
         config_path.mkdir(parents=True, exist_ok=True)
-    config.save(filename=os.path.join(config_path, f"{method}_{datetime.now().strftime('%Y-%M-%d-%H-%M%S%f')}.cfg"))
+    config.save(filename=os.path.join(config_path, f"{method} {datetime.now().timestamp()}.cfg"))
 
     _, _, _, best, _, winner = run_experiment(method, cpus, generations, run_path, group, config)
     obj = 100 - best.fitness
@@ -96,6 +95,6 @@ if __name__ == '__main__':
 
     # space = search_space()
     # print(objective("FS_NEAT", 2, 2, 2, "/tmp", sample(space)))
-    optimize("FS_NEAT", 2, 2, [1, 2, 4, 5])
+    optimize("FS_NEAT", 1, 2, [1, 2, 4, 5])
 
     # print(sample(space))
