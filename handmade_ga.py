@@ -166,6 +166,10 @@ def evolve(population_size, num_generations, num_weights, mutate_new_inds, envir
     return population[np.argmax(population)], means, maxes
 
 
+def multi_fitness(values):
+    return np.mean(values) / 2 + np.min(values)
+
+
 if __name__ == '__main__':
     import sys
     import os
@@ -194,6 +198,8 @@ if __name__ == '__main__':
                       speed="fastest",
                       logs="off"
                       )
+
+    env.cons_multi = multi_fitness
 
     # number of weights for multilayer with 10 hidden neurons.
     n_vars = (9 + 1) * n_hidden_neurons + (n_hidden_neurons + 1) * 5
