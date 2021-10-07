@@ -1,5 +1,9 @@
 import random
 from copy import deepcopy
+import numpy as np
+
+from demo_controller import player_controller
+
 
 
 class Individual:
@@ -7,17 +11,24 @@ class Individual:
         if weights is None:
             if num_weights is None:
                 raise ValueError("If no weights specified, must specify number of random weights to initialize")
-            self.weights = [random.random() for _ in range(num_weights)]
+            self.weights = np.array([random.random() for _ in range(num_weights)])
         else:
-            self.weights = weights
+            self.weights = np.array(weights)
 
         self.child = False
+        self.fitness = None
 
     def __len__(self):
         return len(self.weights)
 
     def __iter__(self):
         yield from self.weights
+
+    def __str__(self):
+        return self.__repr__()
+
+    def __repr__(self):
+        return ",".join([str(x) for x in self.weights])
 
 
 
@@ -43,6 +54,7 @@ def mutate(parents, offspring, new_inds, generations, current_generation):
                 else:
                     sigma = (generations - current_generation) / generations
                 weight + random.gauss(mu, sigma)
+                new_individual.child = True
             # add to population
             population.append(new_individual)
 
@@ -72,19 +84,68 @@ def recombination(parent_list): # mating
     return parents, offsprings
 
 
-def evolve(population_size, num_generations, num_weights, mutate_new_inds):
+def final_selection(population, pop_size = 10):
+    return sorted(population, reverse=True, key=lambda x: x.fitness)[:pop_size]
+
+
+def evaluate(population, environment):
+    # This assumes that an individual will never have its weights changed
+    # TODO CHECK THIS ASSUMPTION!
+    for individual in population:
+        if individual.fitness is None:
+            print(individual)
+            f, p, e, t = environment.play(pcont=individual.weights)
+            individual.fitness = f
+    return population
+
+
+def evolve(population_size, num_generations, num_weights, mutate_new_inds, environment):
     # randomly initialise pop
     population = [Individual(num_weights=num_weights) for _ in range(population_size)]
+    population = evaluate(population, environment)
 
     for generation in range(num_generations):
         parents = selection(population)
         parents, offspring = recombination(parents)
         population = mutate(parents, offspring, mutate_new_inds, num_generations, generation)
+        population = evaluate(population, environment)
+        population = final_selection(population, population_size)
 
-def final_selection(population, pop_size = 10):
-    return sorted(population, reverse=True, key=lambda x: x.fitness)[:pop_size]
+
+
 
 
 
 if __name__ == '__main__':
-    evolve(10, 1, 10, 5)
+    import sys
+    import os
+
+    sys.path.insert(0, 'evoman')
+    from evoman.environment import Environment
+    # choose this for not using visuals and thus making experiments faster
+    headless = True
+    if headless:
+        os.environ["SDL_VIDEODRIVER"] = "dummy"
+
+    n_hidden_neurons = 10
+
+    experiment_name = 'multi_demo'
+    if not os.path.exists(experiment_name):
+        os.makedirs(experiment_name)
+
+    # initializes simulation in multi evolution mode, for multiple static enemies.
+    env = Environment(experiment_name=experiment_name,
+                      enemies=[7, 8],
+                      multiplemode="yes",
+                      playermode="ai",
+                      player_controller=player_controller(n_hidden_neurons),
+                      enemymode="static",
+                      level=2,
+                      speed="fastest",
+                      logs="off"
+                      )
+
+    # number of weights for multilayer with 10 hidden neurons.
+    n_vars = (env.get_num_sensors() + 1) * n_hidden_neurons + (n_hidden_neurons + 1) * 5
+
+    evolve(5, 1, n_vars, 5, env)
