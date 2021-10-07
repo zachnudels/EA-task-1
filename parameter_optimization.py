@@ -11,10 +11,10 @@ from hyperopt.pyll.stochastic import sample
 from functools import partial
 import pickle 
 
-from experiment import run_experiment
+from generalist_experiment import run_experiment
 
 
-def objective(args, method, cpus, generations, enemy, run_path):
+def objective(args, method, cpus, group, generations, run_path):
     local_dir = os.path.dirname('evoman')
     weight_mutate_rate = args['weight_mutate_rate']
     conn_add_prob = args['conn_add_prob']
@@ -39,13 +39,12 @@ def objective(args, method, cpus, generations, enemy, run_path):
     # config.genome_config.compatibility_disjoint_coefficient = compatibility_disjoint_coefficient
     # config.genome_config.compatibility_weight_coefficient = compatibility_weight_coefficient
 
-
-    config_path = Path(f"configs/{method}")
+    config_path = Path(f"configs/{method}/{''.join([str(x) for x in enemies])}")
     if not config_path.exists():
         config_path.mkdir(parents=True, exist_ok=True)
-    config.save(filename=os.path.join(config_path, f"{method}_{datetime.now().strftime('%Y-%m-%d-%H-%M%S%f')}.cfg"))
+    config.save(filename=os.path.join(config_path, f"{method} {datetime.now().timestamp()}.cfg"))
 
-    _, _, _, best, _, winner = run_experiment(method, cpus, generations, enemy, run_path, config)
+    _, _, _, best, _, winner = run_experiment(method, cpus, generations, run_path, group, config)
     obj = 100 - best.fitness
     if best.fitness != winner.fitness:
         obj += 10
@@ -85,8 +84,8 @@ def search_space():
     }
     return space
 
-def optimize(trials, max_trials):
-    return fmin(partial(objective, method="FS_NEAT", generations=2, cpus=2, enemy=2, run_path='/tmp')
+def optimize(method, generations, cpus, enemies, trials, max_trials):
+    return fmin(partial(objective, method=method, generations=generations, cpus=cpus, group=enemies, run_path='/tmp')
                 , search_space(), algo=tpe.suggest, trials=trials, max_evals=max_trials), trials
 
 
@@ -94,30 +93,43 @@ if __name__ == '__main__':
     if platform.system() == 'Darwin':
         multiprocessing.set_start_method('spawn')  # Comment this if not on MACOS
 
-    # space = search_space()
-    # print(objective("FS_NEAT", 2, 2, 2, "/tmp", sample(space)))
 
+    method = "FS_NEAT"
+    generations = 1
+    cpus = 2
+    enemies = [1,2,4,5]
     max_trials = 5
-    trial_steps = 1
+    # trial_steps = 1
 
     trials = None
     if (sys.argv[1] == "save"):
         trials = Trials()
+        if (len(sys.argv) > 2):
+            max_trials = int(sys.argv[2])
     elif (sys.argv[1] == "load"):
         try:
             trials = pickle.load(open(sys.argv[2], "rb"))
-            print("Found save trials. Loading...")
+            print("Found saved trials. Loading...")
             if (len(sys.argv) > 3):
-                trial_steps = sys.argv[3]
+                max_trials = int(sys.argv[3])
 
-            max_trials = len(trials.trials) + trial_steps
-        except:
+            # max_trials = len(trials.trials) + trial_steps
+        except Exception:
+            print("Could not load saved trials")
             trials = Trials()
 
     print(f"Running additional {max_trials} trials")
-    _, trials = optimize(trials, max_trials)
-    with open("myfile.p", "wb") as f:
+
+    solution, trials = optimize(method, generations, cpus, enemies, trials, max_trials)
+
+    result_path = Path(f"param_opt_results/{method}/{''.join([str(x) for x in enemies])}")
+    if not result_path.exists():
+        result_path.mkdir(parents=True, exist_ok=True)
+
+
+    with open(f"{result_path}/trials.p", "wb") as f:
         pickle.dump(trials, f)
 
+    with open(f"{result_path}/best_solution.p", "wb") as f:
+        pickle.dump(solution, f)
 
-    # print(sample(space))
