@@ -8,6 +8,7 @@ class Individual():
         self.fitness = None
         self.is_child = False
 
+
 def selection(population):
     random_pop = random.sample(population, len(population))
     return [(random_pop[i], random_pop[i+1]) for i in range(0, len(random_pop)-1, 2)]
@@ -52,9 +53,12 @@ def recombination(parent_list): # mating
     return offsprings
 
 
+def final_selection(population, pop_size = 10):
+    return sorted(population, reverse=True, key=lambda x: x.fitness)[:pop_size]
 
 
 
 if __name__ == '__main__':
-    pop = [1,2,3,4,5,6, 7]
-    print(selection(pop))
+    pop = [Individual() for x in range(20)]
+    # print(selection(pop))
+    print(final_selection(pop))
