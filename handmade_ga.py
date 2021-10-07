@@ -4,18 +4,18 @@ import numpy as np
 from datetime import datetime
 from math import isclose
 
-from demo_controller import player_controller
 from engineered_controller import EngineeredController
 
+rng = np.random.default_rng(int(datetime.now().timestamp()))
 
 class Individual:
-    def __init__(self, weights=None, num_weights=None):
-        if weights is None:
-            if num_weights is None:
-                raise ValueError("If no weights specified, must specify number of random weights to initialize")
-            self.weights = np.array([random.uniform(-1, 1) for _ in range(num_weights)])
-        else:
+    def __init__(self, weights=None):
+        if isinstance(weights, list):
             self.weights = np.array(weights)
+        elif isinstance(weights, int):
+            self.weights = rng.uniform(-1, 1, weights)
+        else:
+            raise ValueError("Weights must either be list or int")
 
         self.child = False
         self.fitness = None
@@ -113,15 +113,14 @@ def evaluate(population, environment):
 def resample_population(population, population_size, num_weights):
     population = sorted(population, reverse=True, key=lambda x: x.fitness)[:int(population_size // 2)]
     for _ in range(int(population_size // 2)):
-        population.append(Individual(num_weights=num_weights))
-
+        population.append(Individual(num_weights))
     return population
 
 
 def evolve(population_size, num_generations, num_weights, mutate_new_inds, environment, resample_gen):
     print("Initializing Population")
     #  randomly initialise pop
-    population = [Individual(num_weights=num_weights) for _ in range(population_size)]
+    population = [Individual(num_weights) for _ in range(population_size)]
     population = evaluate(population, environment)
     means = []
     maxes = []
@@ -135,9 +134,11 @@ def evolve(population_size, num_generations, num_weights, mutate_new_inds, envir
             resampled = True
             stagnant = False
             population = resample_population(population, population_size, num_weights)
+            population = evaluate(population, environment)
         elif generation != 0 and generation % resample_gen == 0:
             resampled = True
             population = resample_population(population, population_size, num_weights)
+            population = evaluate(population, environment)
 
         parents = selection(population)
         parents, offspring = recombination(parents)
@@ -202,7 +203,7 @@ if __name__ == '__main__':
                                 num_weights=n_vars,
                                 mutate_new_inds=5,
                                 environment=env,
-                                resample_gen=1
+                                resample_gen=20
                                 )
     # print(best)
     print(means)
