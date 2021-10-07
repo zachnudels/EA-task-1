@@ -10,10 +10,10 @@ import neat
 from hyperopt.pyll.stochastic import sample
 from functools import partial
 
-from experiment import run_experiment
+from generalist_experiment import run_experiment
 
 
-def objective(args, method, cpus, generations, enemy, run_path):
+def objective(args, method, cpus, group, generations, run_path):
     local_dir = os.path.dirname('evoman')
     weight_mutate_rate = args['weight_mutate_rate']
     conn_add_prob = args['conn_add_prob']
@@ -44,7 +44,7 @@ def objective(args, method, cpus, generations, enemy, run_path):
         config_path.mkdir(parents=True, exist_ok=True)
     config.save(filename=os.path.join(config_path, f"{method}_{datetime.now().strftime('%Y-%M-%d-%H-%M%S%f')}.cfg"))
 
-    _, _, _, best, _, winner = run_experiment(method, cpus, generations, enemy, run_path, config)
+    _, _, _, best, _, winner = run_experiment(method, cpus, generations, run_path, group, config)
     obj = 100 - best.fitness
     if best.fitness != winner.fitness:
         obj += 10
@@ -84,9 +84,10 @@ def search_space():
     }
     return space
 
-def optimize():
-    return fmin(partial(objective, method="FS_NEAT", generations=2, cpus=2, enemy=2, run_path='/tmp')
-                , search_space(), algo=tpe.suggest, max_evals=100)
+
+def optimize(method, generations, cpus, group):
+    return fmin(partial(objective, method=method, generations=generations, cpus=cpus, group=group, run_path='/tmp'),
+                search_space(), algo=tpe.suggest, max_evals=100)
 
 
 if __name__ == '__main__':
@@ -95,6 +96,6 @@ if __name__ == '__main__':
 
     # space = search_space()
     # print(objective("FS_NEAT", 2, 2, 2, "/tmp", sample(space)))
-    optimize()
+    optimize("FS_NEAT", 2, 2, [1, 2, 4, 5])
 
     # print(sample(space))

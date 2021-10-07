@@ -32,8 +32,10 @@ env = Environment(experiment_name=experiment_name,
                     logs="on")
 
 class CustomParallelEvaluator(ParallelEvaluator):
-    def __init__(self, num_workers, eval_function, timeout=None, enemies=[1]):
+    def __init__(self, num_workers, eval_function, timeout=None, enemies=None):
         super().__init__(num_workers, eval_function, timeout)
+        if enemies is None:
+            enemies = list([1])
         self.enemies = enemies
 
     def evaluate(self, genomes, config):
@@ -189,13 +191,13 @@ def run_final_experiment(methods, groups):
             # evaluate_winners(winners, method, spec_plot_dir)
 
 
-def run_experiment(method, cpus, generations, group, run_path):
+def run_experiment(method, cpus, generations, run_path, group=None, config=None):
     """
     Parameters:
         method:string ENGINEERED | FS_NEAT,
         generations:int number of generations to run,
         cpus:int number of cpus to use during run
-        enemy:int enemy to run against
+        group:List[int] enemies to run against
         run:int iteration
         path:Path working dir
     Returns:
@@ -207,11 +209,12 @@ def run_experiment(method, cpus, generations, group, run_path):
 
     local_dir = os.path.dirname('evoman')
 
-    config_path = os.path.join(local_dir, f"{method}.cfg")
-    config = neat.Config(neat.DefaultGenome, neat.DefaultReproduction,
-                         neat.DefaultSpeciesSet, neat.DefaultStagnation,
-                         config_path
-                         )
+    if config is None:  # use default
+        config_path = os.path.join(local_dir, f"{method}.cfg")
+        config = neat.Config(neat.DefaultGenome, neat.DefaultReproduction,
+                             neat.DefaultSpeciesSet, neat.DefaultStagnation,
+                             config_path
+                             )
 
     pop = neat.Population(config)
     stats = neat.StatisticsReporter()
