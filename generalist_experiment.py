@@ -16,6 +16,10 @@ import random
 
 from multiprocessing import Pool
 
+
+def multi_fitness(values):
+    return np.mean(values) / 2 + min(values)
+
 TIME_CONST = 0.001
 runs_per_net = 1
 
@@ -52,6 +56,7 @@ class CustomParallelEvaluator(ParallelEvaluator):
 def eval_genome(controller, net, r_all, enemies):
     env.player_controller = controller
     env.enemies = enemies
+    env.cons_multi = multi_fitness
     fitnesses = []
     player = []
     enemy = []
