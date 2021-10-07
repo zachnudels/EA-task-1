@@ -1,14 +1,15 @@
 import multiprocessing
-import os
+import os, sys
 import platform
 from pathlib import Path
 from datetime import datetime
-from hyperopt import hp, fmin, tpe
+from hyperopt import hp, fmin, tpe, Trials
 import numpy as np
 from sklearn.model_selection import ParameterGrid
 import neat
 from hyperopt.pyll.stochastic import sample
 from functools import partial
+import pickle 
 
 from experiment import run_experiment
 
@@ -42,7 +43,7 @@ def objective(args, method, cpus, generations, enemy, run_path):
     config_path = Path(f"configs/{method}")
     if not config_path.exists():
         config_path.mkdir(parents=True, exist_ok=True)
-    config.save(filename=os.path.join(config_path, f"{method}_{datetime.now().strftime('%Y-%M-%d-%H-%M%S%f')}.cfg"))
+    config.save(filename=os.path.join(config_path, f"{method}_{datetime.now().strftime('%Y-%m-%d-%H-%M%S%f')}.cfg"))
 
     _, _, _, best, _, winner = run_experiment(method, cpus, generations, enemy, run_path, config)
     obj = 100 - best.fitness
@@ -84,9 +85,9 @@ def search_space():
     }
     return space
 
-def optimize():
+def optimize(trials, max_trials):
     return fmin(partial(objective, method="FS_NEAT", generations=2, cpus=2, enemy=2, run_path='/tmp')
-                , search_space(), algo=tpe.suggest, max_evals=100)
+                , search_space(), algo=tpe.suggest, trials=trials, max_evals=max_trials), trials
 
 
 if __name__ == '__main__':
@@ -95,6 +96,28 @@ if __name__ == '__main__':
 
     # space = search_space()
     # print(objective("FS_NEAT", 2, 2, 2, "/tmp", sample(space)))
-    optimize()
+
+    max_trials = 5
+    trial_steps = 1
+
+    trials = None
+    if (sys.argv[1] == "save"):
+        trials = Trials()
+    elif (sys.argv[1] == "load"):
+        try:
+            trials = pickle.load(open(sys.argv[2], "rb"))
+            print("Found save trials. Loading...")
+            if (len(sys.argv) > 3):
+                trial_steps = sys.argv[3]
+
+            max_trials = len(trials.trials) + trial_steps
+        except:
+            trials = Trials()
+
+    print(f"Running additional {max_trials} trials")
+    _, trials = optimize(trials, max_trials)
+    with open("myfile.p", "wb") as f:
+        pickle.dump(trials, f)
+
 
     # print(sample(space))
