@@ -3,6 +3,7 @@ from copy import deepcopy
 import numpy as np
 from datetime import datetime
 from math import isclose
+from pathlib import Path
 
 from engineered_controller import EngineeredController
 
@@ -28,10 +29,10 @@ class Individual:
         yield from self.weights
 
     def __str__(self):
-        return self.__repr__()
+        return ",".join([str(x) for x in self.weights])
 
     def __repr__(self):
-        return ",".join([str(x) for x in self.weights])
+        return self.weights
 
     def __le__(self, other):
         return self.fitness <= other.fitness
@@ -118,17 +119,30 @@ def resample_population(population, population_size, num_weights):
     return population
 
 
-def evolve(population_size, num_generations, num_weights, mutate_new_inds, environment, resample_gen):
+def evolve(population_size, num_generations, num_weights, mutate_new_inds, environment):
     print("Initializing Population")
     #  randomly initialise pop
-    population = [Individual(num_weights) for _ in range(population_size)]
-    population = evaluate(population, environment)
+
     means = []
     maxes = []
     stagnant = False
 
+    start = datetime.now()
+    population = [Individual(num_weights) for _ in range(population_size)]
+    population = evaluate(population, environment)
+    end = datetime.now()
+
+    mean = np.mean([x.fitness for x in population])
+    max = np.max([x.fitness for x in population])
+    print(f"\n\n==== Generation 0 =====\n")
+    print(f"Mean fitness: {mean}")
+    print(f"Max fitness: {max}")
+    print(f"Duration: {end - start}")
+    means.append(mean)
+    maxes.append(max)
+
     for generation in range(num_generations):
-        print(f"\n\n==== Generation {generation} =====\n")
+        print(f"\n\n==== Generation {generation+1} =====\n")
         resampled = False
         start = datetime.now()
         if stagnant:
@@ -136,10 +150,10 @@ def evolve(population_size, num_generations, num_weights, mutate_new_inds, envir
             stagnant = False
             population = resample_population(population, population_size, num_weights)
             population = evaluate(population, environment)
-        elif generation != 0 and generation % resample_gen == 0:
-            resampled = True
-            population = resample_population(population, population_size, num_weights)
-            population = evaluate(population, environment)
+        # elif generation != 0 and generation % resample_gen == 0:
+        #     resampled = True
+        #     population = resample_population(population, population_size, num_weights)
+        #     population = evaluate(population, environment)
 
         parents = selection(population)
         parents, offspring = recombination(parents)
@@ -171,7 +185,29 @@ def multi_fitness(values):
     return np.mean(values) / 2 + np.min(values)
 
 
+def save_results(means, maxes, best_genome, means_path, maxes_path, best_path):
+    dt = datetime.now().timestamp()
+    np.savetxt(f'{means_path}/{dt}.csv', np.array(means), delimiter=',')
+    np.savetxt(f'{maxes_path}/{dt}.csv', np.array(maxes), delimiter=',')
+    np.savetxt(f'{best_path}/{dt}.csv', np.array(best_genome.weights), delimiter=',')
+
 if __name__ == '__main__':
+    enemies = [2, 4, 5, 6]
+
+    enemy_string = "".join([str(x) for x in enemies])
+    path = Path(f"handmade_results/{enemy_string}/")
+    means_path = path.joinpath(f"means/")
+    maxes_path = path.joinpath(f"maxes/")
+    best_path = path.joinpath(f"best/")
+    if not means_path.exists():
+        means_path.mkdir(parents=True, exist_ok=True)
+
+    if not maxes_path.exists():
+        maxes_path.mkdir(parents=True, exist_ok=True)
+
+    if not best_path.exists():
+        best_path.mkdir(parents=True, exist_ok=True)
+
     import sys
     import os
 
@@ -190,7 +226,7 @@ if __name__ == '__main__':
 
     # initializes simulation in multi evolution mode, for multiple static enemies.
     env = Environment(experiment_name=experiment_name,
-                      enemies=[1, 4, 6, 7],
+                      enemies=enemies,
                       multiplemode="yes",
                       playermode="ai",
                       player_controller=EngineeredController(n_hidden_neurons),
@@ -205,13 +241,10 @@ if __name__ == '__main__':
     # number of weights for multilayer with 10 hidden neurons.
     n_vars = (14 + 1) * n_hidden_neurons + (n_hidden_neurons + 1) * 5
 
-    best, means, maxes = evolve(population_size=20,
-                                num_generations=150,
+    best, means, maxes = evolve(population_size=2,
+                                num_generations=1,
                                 num_weights=n_vars,
                                 mutate_new_inds=5,
                                 environment=env,
-                                resample_gen=20
                                 )
-    # print(best)
-    print(means)
-    print(maxes)
+    save_results(means, maxes, best, means_path, maxes_path, best_path)
