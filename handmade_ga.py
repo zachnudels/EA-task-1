@@ -1,7 +1,7 @@
 import random
 from copy import deepcopy
 import numpy as np
-from datetime import datetime
+from datetime import datetime, timedelta
 from math import isclose
 from pathlib import Path
 
@@ -52,13 +52,13 @@ def selection(population):
     return [(random_pop[i], random_pop[i+1]) for i in range(0, len(random_pop)-1, 2)]
 
 
-def mutate(parents, offspring, new_inds, generations, current_generation):
+def mutate(parents, offspring, prop, generations, current_generation):
     population = parents
     for child in offspring:
         population.append(child)
 
     for individual in population:
-        if random.random() < (new_inds/len(population)):
+        if random.random() < prop:
             new_individual = deepcopy(individual)
             # randomly alter weights
             for weight in individual:
@@ -119,30 +119,35 @@ def resample_population(population, population_size, num_weights):
     return population
 
 
-def evolve(population_size, num_generations, num_weights, mutate_new_inds, environment):
+def evolve(population_size, num_generations, num_weights, mutate_prop, environment, resample_gen):
     print("Initializing Population")
     #  randomly initialise pop
 
     means = []
     maxes = []
     stagnant = False
+    total_time = timedelta(0)
 
-    start = datetime.now()
+
     population = [Individual(num_weights) for _ in range(population_size)]
+    print(f"\n\n==== Generation 0/{num_generations} =====\n")
+    start = datetime.now()
     population = evaluate(population, environment)
     end = datetime.now()
+    time = end - start
+    total_time += time
 
     mean = np.mean([x.fitness for x in population])
     max = np.max([x.fitness for x in population])
-    print(f"\n\n==== Generation 0 =====\n")
+
     print(f"Mean fitness: {mean}")
     print(f"Max fitness: {max}")
-    print(f"Duration: {end - start}")
+    print(f"Duration: {time} (average: {time})")
     means.append(mean)
     maxes.append(max)
 
     for generation in range(num_generations):
-        print(f"\n\n==== Generation {generation+1} =====\n")
+        print(f"\n\n==== Generation {generation+1}/{num_generations} =====\n")
         resampled = False
         start = datetime.now()
         if stagnant:
@@ -150,14 +155,14 @@ def evolve(population_size, num_generations, num_weights, mutate_new_inds, envir
             stagnant = False
             population = resample_population(population, population_size, num_weights)
             population = evaluate(population, environment)
-        # elif generation != 0 and generation % resample_gen == 0:
-        #     resampled = True
-        #     population = resample_population(population, population_size, num_weights)
-        #     population = evaluate(population, environment)
+        elif generation != 0 and generation % resample_gen == 0:
+            resampled = True
+            population = resample_population(population, population_size, num_weights)
+            population = evaluate(population, environment)
 
         parents = selection(population)
         parents, offspring = recombination(parents)
-        population = mutate(parents, offspring, mutate_new_inds, num_generations, generation)
+        population = mutate(parents, offspring, mutate_prop, num_generations, generation)
         population = evaluate(population, environment)
         population = final_selection(population, population_size)
 
@@ -167,6 +172,8 @@ def evolve(population_size, num_generations, num_weights, mutate_new_inds, envir
             stagnant = True
 
         end = datetime.now()
+        time = end - start
+        total_time += time
 
         if resampled:
             print("Reset half of population")
@@ -174,9 +181,11 @@ def evolve(population_size, num_generations, num_weights, mutate_new_inds, envir
             print("Population stagnant. Resetting in next generation.")
         print(f"Mean fitness: {mean}")
         print(f"Max fitness: {max}")
-        print(f"Duration: {end-start}")
+        print(f"Duration: {time} (average: {total_time/(generation+2)})")
         means.append(mean)
         maxes.append(max)
+
+    print(f"Total duration was {total_time}")
 
     return population[np.argmax(population)], means, maxes
 
@@ -192,7 +201,7 @@ def save_results(means, maxes, best_genome, means_path, maxes_path, best_path):
     np.savetxt(f'{best_path}/{dt}.csv', np.array(best_genome.weights), delimiter=',')
 
 if __name__ == '__main__':
-    enemies = [2, 4, 5, 6]
+    enemies = [2, 4, 5]
 
     enemy_string = "".join([str(x) for x in enemies])
     path = Path(f"handmade_results/{enemy_string}/")
@@ -241,10 +250,11 @@ if __name__ == '__main__':
     # number of weights for multilayer with 10 hidden neurons.
     n_vars = (14 + 1) * n_hidden_neurons + (n_hidden_neurons + 1) * 5
 
-    best, means, maxes = evolve(population_size=2,
-                                num_generations=1,
+    best, means, maxes = evolve(population_size=50,
+                                num_generations=50,
                                 num_weights=n_vars,
-                                mutate_new_inds=5,
+                                mutate_prop=0.5,
                                 environment=env,
+                                resample_gen=20
                                 )
     save_results(means, maxes, best, means_path, maxes_path, best_path)
