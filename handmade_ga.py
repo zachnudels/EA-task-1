@@ -149,7 +149,7 @@ def evolve(population_size, num_generations, num_weights, mutate_new_inds, envir
 
         mean = np.mean([x.fitness for x in population])
         max = np.max([x.fitness for x in population])
-        if isclose(mean, max):
+        if isclose(mean, max, rel_tol=1e-05):
             stagnant = True
 
         end = datetime.now()
@@ -203,7 +203,7 @@ if __name__ == '__main__':
     env.cons_multi = multi_fitness
 
     # number of weights for multilayer with 10 hidden neurons.
-    n_vars = (9 + 1) * n_hidden_neurons + (n_hidden_neurons + 1) * 5
+    n_vars = (14 + 1) * n_hidden_neurons + (n_hidden_neurons + 1) * 5
 
     best, means, maxes = evolve(population_size=20,
                                 num_generations=150,

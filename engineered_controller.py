@@ -89,8 +89,13 @@ def is_player_facing_enemy(inputs):
 
 def remove_three(inputs):
     projectile_distances = np.array([np.sqrt(inputs[i] ** 2 + inputs[i + 1] ** 2) for i in range(4, 19, 2)])
-    projectile_distances.sort()
-    return projectile_distances[:-3]
+    projectiles = [(projectile_distances[(i//2) - 2], inputs[i], inputs[i+1]) for i in range(4, 19, 2)]
+    projectiles.sort(key=lambda x: x[0])
+    rtn = []
+    for projectile in projectiles[:-3]:
+        rtn.append(transform_distance(projectile[1]))
+        rtn.append(transform_distance(projectile[2]))
+    return rtn
 
 
 def construct_features(inputs):
