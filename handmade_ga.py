@@ -8,6 +8,7 @@ from engineered_controller import EngineeredController
 
 rng = np.random.default_rng(int(datetime.now().timestamp()))
 
+
 class Individual:
     def __init__(self, weights=None):
         if isinstance(weights, list):
@@ -204,7 +205,7 @@ if __name__ == '__main__':
     # number of weights for multilayer with 10 hidden neurons.
     n_vars = (9 + 1) * n_hidden_neurons + (n_hidden_neurons + 1) * 5
 
-    best, means, maxes = evolve(population_size=10,
+    best, means, maxes = evolve(population_size=20,
                                 num_generations=150,
                                 num_weights=n_vars,
                                 mutate_new_inds=5,

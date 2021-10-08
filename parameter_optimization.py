@@ -85,11 +85,12 @@ def search_space():
     return space
 
 def optimize(method, generations, cpus, enemies, trials, max_trials):
-    for group in groups:
-        path = Path(f"checkpoints/{group}/{method}/")
-        if not path.exists():
-            path.mkdir(parents=True, exist_ok=True)
-    return fmin(partial(objective, method=method, generations=generations, cpus=cpus, group=enemies, run_path='/tmp')
+    enemy_string = "".join([str(x) for x in enemies])
+    path = Path(f"checkpoints/{enemy_string}/{method}/")
+    if not path.exists():
+        path.mkdir(parents=True, exist_ok=True)
+
+    return fmin(partial(objective, method=method, generations=generations, cpus=cpus, group=enemies, run_path=path)
                 , search_space(), algo=tpe.suggest, trials=trials, max_evals=max_trials), trials
 
 
