@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 from math import isclose
 from pathlib import Path
 
-from engineered_controller import EngineeredController
+from demo_controller import player_controller
 
 rng = np.random.default_rng(int(datetime.now().timestamp()))
 
@@ -238,7 +238,7 @@ if __name__ == '__main__':
                       enemies=enemies,
                       multiplemode="yes",
                       playermode="ai",
-                      player_controller=EngineeredController(n_hidden_neurons),
+                      player_controller=player_controller(n_hidden_neurons),
                       enemymode="static",
                       level=2,
                       speed="fastest",
@@ -248,10 +248,10 @@ if __name__ == '__main__':
     env.cons_multi = multi_fitness
 
     # number of weights for multilayer with 10 hidden neurons.
-    n_vars = (14 + 1) * n_hidden_neurons + (n_hidden_neurons + 1) * 5
+    n_vars = (env.get_num_sensors() + 1) * n_hidden_neurons + (n_hidden_neurons + 1) * 5
 
     best, means, maxes = evolve(population_size=50,
-                                num_generations=50,
+                                num_generations=100,
                                 num_weights=n_vars,
                                 mutate_prop=0.5,
                                 environment=env,
