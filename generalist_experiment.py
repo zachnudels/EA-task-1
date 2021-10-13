@@ -143,26 +143,30 @@ def run_final_experiment(methods, groups):
             # durations = []
             mean_fit_per_gen = []
             max_fit_per_gen = []
-            winners = []
+            best_genomes = []
             best_sizes = []
+            winners = []
             for run in range(runs):
+                print(f"RUNNING RUN: {run} FOR {group}")
                 run_path = spec_plot_path.joinpath(Path(f"{run}/"))
                 if not run_path.exists():
                     run_path.mkdir(parents=True, exist_ok=True)
 
                 # FOR TESTING SWITCH THE TWO LINES BELOW
-                duration, means, maxes, winner, best_size = run_experiment(method=method, cpus=cpus, generations=generations, group=group, run_path=run_path)
-                # duration, means, maxes, winner = random.uniform(100, 500), np.random.uniform(low=10.0, high=60.0, size=(generations,)), np.random.uniform(low=60.0, high=100.0, size=(generations,)), random.uniform(0, 1)
+                duration, means, maxes, best_genome, best_size, winner = run_experiment(method=method, cpus=cpus, generations=generations, group=group, run_path=run_path)
+                # duration, means, maxes, best_genome = random.uniform(100, 500), np.random.uniform(low=10.0, high=60.0, size=(generations,)), np.random.uniform(low=60.0, high=100.0, size=(generations,)), random.uniform(0, 1)
 
                 mean_fit_per_gen.append(means)
                 max_fit_per_gen.append(maxes)
-                winners.append(winner)
+                best_genomes.append(best_genome)
                 best_sizes.append(best_size)
+                winners.append(winner)
 
                 np.savetxt(f'{run_path}mean_fit_per_gen.csv', mean_fit_per_gen, delimiter=',')
                 np.savetxt(f'{run_path}max_fit_per_gen.csv', max_fit_per_gen, delimiter=',')
-                np.savetxt(f'{run_path}winners.csv', winners, delimiter=',')
+                np.savetxt(f'{run_path}best_genomes.csv', best_genomes, delimiter=',')
                 np.savetxt(f'{run_path}best_sizes.csv', best_sizes, delimiter=',')
+                np.savetxt(f'{run_path}winners.csv', winners, delimiter=',')
 
 
 
@@ -198,7 +202,7 @@ def run_final_experiment(methods, groups):
             np.savetxt(f'{spec_plot_dir}/10run_std_max_fitnesses.csv', std_max_fit_per_gen, delimiter=',')
             np.savetxt(f'{spec_plot_dir}/10run_best_genome_size.csv', best_sizes, delimiter=',')
 
-            evaluate_winners(winners, method, spec_plot_dir)
+            evaluate_winners(best_genomes, method, spec_plot_dir)
 
 
 def run_experiment(method, cpus, generations, run_path, group=None, config=None):
