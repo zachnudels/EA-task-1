@@ -48,7 +48,7 @@ class CustomParallelEvaluator(ParallelEvaluator):
             jobs.append(self.pool.apply_async(self.eval_function, (genome, config, self.enemies)))
 
         # assign the fitness back to each genome
-        for job, (ignored_genome_id, genome) in zip(jobs, genomes):
+        for job, (ignored_genome_id, genome) in list(zip(jobs, genomes)):
             genome.fitness = job.get(timeout=self.timeout)
 
 
@@ -90,7 +90,7 @@ def eval_genome_feat_eng(genome, config, enemies, r_all=False):
 
 def evaluate_winners(winners, method, plot_dir):
     local_dir = os.path.dirname('evoman')
-    config_path = os.path.join(local_dir, f"{method}.cfg")
+    config_path = os.path.join(local_dir, f"{method}_best.cfg")
     config = neat.Config(neat.DefaultGenome, neat.DefaultReproduction,
                          neat.DefaultSpeciesSet, neat.DefaultStagnation,
                          config_path
@@ -103,9 +103,9 @@ def evaluate_winners(winners, method, plot_dir):
             p = 0
             e = 0
             if method == "ENGINEERED":
-                _, p, e = eval_genome_feat_eng(winner, config, True)
+                _, p, e = eval_genome_feat_eng(winner, config, True, enemies=[1,2,3,4,5,6,7,8])
             elif method == "FS_NEAT":
-                _, p, e = eval_genome_fs_neat(winner, config, True)
+                _, p, e = eval_genome_fs_neat(winner, config, True, enemies=[1,2,3,4,5,6,7,8])
             gains.append(p - e)
         all_gains.append(np.mean(gains))
 
@@ -117,9 +117,9 @@ def evaluate_winners(winners, method, plot_dir):
 
 
 def run_final_experiment(methods, groups):
-    generations = 1
-    cpus = 1  # multiprocessing.cpu_count() - 1
-    runs = 1
+    generations = 100
+    cpus = multiprocessing.cpu_count() - 1
+    runs = 10
 
     plot_dir = 'results_generalist'
     plot_path = Path(plot_dir)
@@ -130,9 +130,9 @@ def run_final_experiment(methods, groups):
     for method in [methods]:
         # run for 3 individual enemies
         for group in groups:
-            path = Path(f"checkpoints/{group}/{method}/")
-            if not path.exists():
-                path.mkdir(parents=True, exist_ok=True)
+            # path = Path(f"checkpoints/{group}/{method}/")
+            # if not path.exists():
+            #     path.mkdir(parents=True, exist_ok=True)
 
             spec_plot_dir = f'./{plot_dir}/{group}/{method}/'
             spec_plot_path = Path(spec_plot_dir)
@@ -146,12 +146,12 @@ def run_final_experiment(methods, groups):
             winners = []
             best_sizes = []
             for run in range(runs):
-                run_path = path.joinpath(Path(f"{run}/"))
+                run_path = spec_plot_path.joinpath(Path(f"{run}/"))
                 if not run_path.exists():
                     run_path.mkdir(parents=True, exist_ok=True)
 
                 # FOR TESTING SWITCH THE TWO LINES BELOW
-                duration, means, maxes, winner, best_size = run_experiment(method, cpus, generations, group, run_path)
+                duration, means, maxes, winner, best_size = run_experiment(method=method, cpus=cpus, generations=generations, group=group, run_path=run_path)
                 # duration, means, maxes, winner = random.uniform(100, 500), np.random.uniform(low=10.0, high=60.0, size=(generations,)), np.random.uniform(low=60.0, high=100.0, size=(generations,)), random.uniform(0, 1)
 
                 mean_fit_per_gen.append(means)
@@ -159,7 +159,12 @@ def run_final_experiment(methods, groups):
                 winners.append(winner)
                 best_sizes.append(best_size)
 
-            continue
+                np.savetxt(f'{run_path}mean_fit_per_gen.csv', mean_fit_per_gen, delimiter=',')
+                np.savetxt(f'{run_path}max_fit_per_gen.csv', max_fit_per_gen, delimiter=',')
+                np.savetxt(f'{run_path}winners.csv', winners, delimiter=',')
+                np.savetxt(f'{run_path}best_sizes.csv', best_sizes, delimiter=',')
+
+
 
             avg_mean_fit_per_gen = np.mean(mean_fit_per_gen, axis=0)
             std_mean_fit_per_gen = np.std(mean_fit_per_gen, axis=0)
@@ -193,7 +198,7 @@ def run_final_experiment(methods, groups):
             np.savetxt(f'{spec_plot_dir}/10run_std_max_fitnesses.csv', std_max_fit_per_gen, delimiter=',')
             np.savetxt(f'{spec_plot_dir}/10run_best_genome_size.csv', best_sizes, delimiter=',')
 
-            # evaluate_winners(winners, method, spec_plot_dir)
+            evaluate_winners(winners, method, spec_plot_dir)
 
 
 def run_experiment(method, cpus, generations, run_path, group=None, config=None):
@@ -218,7 +223,7 @@ def run_experiment(method, cpus, generations, run_path, group=None, config=None)
         cpus = multiprocessing.cpu_count()
 
     if config is None:  # use default
-        config_path = os.path.join(local_dir, f"{method}.cfg")
+        config_path = os.path.join(local_dir, f"{method}_best.cfg")
         config = neat.Config(neat.DefaultGenome, neat.DefaultReproduction,
                              neat.DefaultSpeciesSet, neat.DefaultStagnation,
                              config_path
@@ -228,7 +233,7 @@ def run_experiment(method, cpus, generations, run_path, group=None, config=None)
     stats = neat.StatisticsReporter()
     pop.add_reporter(stats)
     pop.add_reporter(neat.StdOutReporter(True))
-    pop.add_reporter(neat.Checkpointer(5, 300, str(run_path) + "/"))
+    # pop.add_reporter(neat.Checkpointer(5, 300, str(run_path) + "/"))
 
     # env.update_parameter('enemies',group)
     pe = None
@@ -251,11 +256,11 @@ def run_experiment(method, cpus, generations, run_path, group=None, config=None)
 if __name__ == '__main__':
     method = sys.argv[1]
     group_1 = [int(a) for a in sys.argv[2]]
-    group_2 = [int(a) for a in sys.argv[3]]
+    # group_2 = [int(a) for a in sys.argv[3]]
 
     if platform.system() == 'Darwin':
         multiprocessing.set_start_method('spawn')  # Comment this if not on MACOS
 
-    run_final_experiment(method, [group_1, group_2])
+    run_final_experiment(method, [group_1]) #,group_2
 
 
