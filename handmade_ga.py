@@ -1,4 +1,3 @@
-import random
 from copy import deepcopy
 import numpy as np
 from datetime import datetime, timedelta
@@ -21,6 +20,13 @@ class Individual:
 
         self.child = False
         self.fitness = None
+
+    def limit_weights(self, lower, upper):
+        for i in range(len(self.weights)):
+            if self.weights[i] > upper:
+                self.weights[i] = upper
+            elif self.weights[i] < lower:
+                self.weights[i] = lower
 
     def __len__(self):
         return len(self.weights)
@@ -48,42 +54,49 @@ class Individual:
 
 
 def selection(population):
-    random_pop = random.sample(population, len(population))
+    random_pop = rng.choice(population, len(population))
     return [(random_pop[i], random_pop[i+1]) for i in range(0, len(random_pop)-1, 2)]
 
 
-def mutate(parents, offspring, prop, generations, current_generation):
-    population = parents
-    for child in offspring:
-        population.append(child)
-
-    for individual in population:
-        if random.random() < prop:
-            new_individual = deepcopy(individual)
+def mutate(population, prop, generations, current_generation):
+    for i in range(len(population)):
+        if rng.uniform(0, 1) < prop:
+            new_individual = deepcopy(population[i])
             # randomly alter weights
-            for i in range(len(individual.weights)):
-                mu = 0
-                if new_individual.child:
-                    sigma = 0.5
-                else:
-                    sigma = (generations - current_generation) / generations
-                individual.weights[i] += random.gauss(mu, sigma)
-		if individual.weights[i] > 1:
-			individual.weights[i] = 1
-		elif individual.weights[i] < -1:
-			individual.weights[i] = -1
+            mu = 0
+            sigma = 0.5
+            if not new_individual.child:
+                sigma = (generations - current_generation) / generations
+
+            for j in range(len(new_individual.weights)):
+                new_individual.weights[j] += rng.normal(mu, sigma)
                 new_individual.child = True
             # add to population
+            new_individual.limit_weights(-1, 1)
             population.append(new_individual)
-
     return population
 
 
-def recombination(parent_list): # mating
+def self_adaptive_mutation(population, prop, sigmas, tau, tau_p):
+    for i in range(len(population)):
+        if rng.uniform(0, 1) < prop:
+            new_individual = deepcopy(population[i])
+            global_change = tau_p * rng.normal(0, 1)
+            for j in range(len(new_individual.weights)):
+                sigmas[j] = sigmas[j] * np.exp(global_change + (tau * rng.normal(0, 1)))
+                if sigmas[j] <= 0:
+                    sigmas[j] = 1e-5
+                new_individual.weights[j] = new_individual.weights[j] + sigmas[j] * rng.normal(0, 1)
+            new_individual.limit_weights(-1, 1)
+            population.append(new_individual)
+    return population, sigmas
+
+
+def recombination(parent_list):  # mating
     offsprings = []
     for parent_1, parent_2 in parent_list:
         # take convex combination
-        weight_1 = random.uniform(0, 1)
+        weight_1 = rng.uniform(0, 1)
         weight_2 = 1 - weight_1
 
         if len(parent_1) != len(parent_2):
@@ -91,23 +104,16 @@ def recombination(parent_list): # mating
 
         offspring_a = Individual([weight_1 * p1 + weight_2 * p2 for p1, p2 in zip(parent_1.weights, parent_2.weights)])
         offspring_a.child = True
-
         offsprings.append(offspring_a)
-	
-	offspring_b = Individual([weight_2 * p1 + weight_1 * p2 for p1, p2 in zip(parent_1.weights, parent_2.weights)])
-        offspring_b.child = True
 
+        offspring_b = Individual([weight_2 * p1 + weight_1 * p2 for p1, p2 in zip(parent_1.weights, parent_2.weights)])
+        offspring_b.child = True
         offsprings.append(offspring_b)
 
-    parents = []
-    for pair in parent_list:
-        parents.append(pair[0])
-        parents.append(pair[1])
-
-    return parents, offsprings
+    return offsprings
 
 
-def final_selection(population, pop_size = 10):
+def final_selection(population, pop_size):
     return sorted(population, reverse=True, key=lambda x: x.fitness)[:pop_size]
 
 
@@ -128,7 +134,7 @@ def resample_population(population, population_size, num_weights):
     return population
 
 
-def evolve(population_size, num_generations, num_weights, mutate_prop, environment, resample_gen):
+def evolve(population_size, num_generations, num_weights, mutate_prop, environment, resample_gen, self_adaptive=False):
     print("Initializing Population")
     #  randomly initialise pop
 
@@ -136,8 +142,10 @@ def evolve(population_size, num_generations, num_weights, mutate_prop, environme
     maxes = []
     stagnant = False
     total_time = timedelta(0)
-    sigmas = [rng.uniform(0,1) for _ in range(num_weights)]
 
+    sigmas = [rng.uniform(0, 1) for _ in range(num_weights)]
+    tau = 1/np.sqrt(2*num_weights)
+    tau_p = 1/np.sqrt(2*np.sqrt(num_weights))
 
     population = [Individual(num_weights) for _ in range(population_size)]
     print(f"\n\n==== Generation 0/{num_generations} =====\n")
@@ -171,8 +179,12 @@ def evolve(population_size, num_generations, num_weights, mutate_prop, environme
             population = evaluate(population, environment)
 
         parents = selection(population)
-        parents, offspring = recombination(parents)
-        population = mutate(parents, offspring, mutate_prop, num_generations, generation)
+        offspring = recombination(parents)
+        population.extend(offspring)
+        if self_adaptive:
+            population, sigmas = self_adaptive_mutation(population, mutate_prop, sigmas, tau, tau_p)
+        else:
+            population = mutate(population, mutate_prop, num_generations, generation)
         population = evaluate(population, environment)
         population = final_selection(population, population_size)
 
@@ -209,6 +221,7 @@ def save_results(means, maxes, best_genome, means_path, maxes_path, best_path):
     np.savetxt(f'{means_path}/{dt}.csv', np.array(means), delimiter=',')
     np.savetxt(f'{maxes_path}/{dt}.csv', np.array(maxes), delimiter=',')
     np.savetxt(f'{best_path}/{dt}.csv', np.array(best_genome.weights), delimiter=',')
+
 
 if __name__ == '__main__':
     enemies = [2, 4, 5]
@@ -265,6 +278,7 @@ if __name__ == '__main__':
                                 num_weights=n_vars,
                                 mutate_prop=0.5,
                                 environment=env,
-                                resample_gen=20
+                                resample_gen=20,
+                                self_adaptive=True
                                 )
     save_results(means, maxes, best, means_path, maxes_path, best_path)
