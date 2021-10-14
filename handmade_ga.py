@@ -155,6 +155,9 @@ def eval_ind(individuals, enemies, multi_fitness):
             f, p, e, t = env.play(pcont=individual.weights)
             individual.fitness = f
             fitnesses.append(f)
+        else:
+            fitnesses.append(individual.fitness)
+    # print(f"Population subset: {len(individuals)}, Number of fitnesses: {len(fitnesses)}")
     return fitnesses
 
 
@@ -165,6 +168,7 @@ def evaluate(pool, population, num_workers, enemies, multi_fitness):
     for i in range(num_workers):
         start = i * d
         end = ((i + 1) * d)
+        # print(f"Sending {start}:{end}. Population size is {len(population)}")
         if i == (num_workers - 1):
             jobs.append(pool.apply_async(eval_ind, (population[start:], enemies, multi_fitness)))
         else:
@@ -173,6 +177,7 @@ def evaluate(pool, population, num_workers, enemies, multi_fitness):
     for job in jobs:
         fitnesses.extend(job.get(timeout=None))
 
+    print(len(fitnesses))
     for i in range(len(population)):
         population[i].fitness = fitnesses[i]
 
@@ -318,6 +323,6 @@ if __name__ == '__main__':
                                    pool=pool,
                                    enemies=_enemies,
                                    multi_fitness=multi_fitness,
-                                   self_adaptive=True
+                                   self_adaptive=False
                                    )
     save_results(_means, _maxes, _best, means_path, maxes_path, best_path)
