@@ -61,13 +61,17 @@ def mutate(parents, offspring, prop, generations, current_generation):
         if random.random() < prop:
             new_individual = deepcopy(individual)
             # randomly alter weights
-            for weight in individual:
+            for i in range(len(individual.weights)):
                 mu = 0
                 if new_individual.child:
                     sigma = 0.5
                 else:
                     sigma = (generations - current_generation) / generations
-                weight + random.gauss(mu, sigma)
+                individual.weights[i] += random.gauss(mu, sigma)
+		if individual.weights[i] > 1:
+			individual.weights[i] = 1
+		elif individual.weights[i] < -1:
+			individual.weights[i] = -1
                 new_individual.child = True
             # add to population
             population.append(new_individual)
@@ -85,10 +89,15 @@ def recombination(parent_list): # mating
         if len(parent_1) != len(parent_2):
             raise Exception("Parent length doesn't match")
 
-        offspring = Individual([weight_1 * p1 + weight_2 * p2 for p1, p2 in zip(parent_1.weights, parent_2.weights)])
-        offspring.child = True
+        offspring_a = Individual([weight_1 * p1 + weight_2 * p2 for p1, p2 in zip(parent_1.weights, parent_2.weights)])
+        offspring_a.child = True
 
-        offsprings.append(offspring)
+        offsprings.append(offspring_a)
+	
+	offspring_b = Individual([weight_2 * p1 + weight_1 * p2 for p1, p2 in zip(parent_1.weights, parent_2.weights)])
+        offspring_b.child = True
+
+        offsprings.append(offspring_b)
 
     parents = []
     for pair in parent_list:
@@ -127,6 +136,7 @@ def evolve(population_size, num_generations, num_weights, mutate_prop, environme
     maxes = []
     stagnant = False
     total_time = timedelta(0)
+    sigmas = [rng.uniform(0,1) for _ in range(num_weights)]
 
 
     population = [Individual(num_weights) for _ in range(population_size)]
