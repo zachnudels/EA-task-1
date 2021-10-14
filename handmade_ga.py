@@ -3,10 +3,42 @@ import numpy as np
 from datetime import datetime, timedelta
 from math import isclose
 from pathlib import Path
+from multiprocessing import Pool, cpu_count, set_start_method
 
 from demo_controller import player_controller
 
 rng = np.random.default_rng(int(datetime.now().timestamp()))
+
+import sys
+import os
+
+sys.path.insert(0, 'evoman')
+from evoman.environment import Environment
+
+# choose this for not using visuals and thus making experiments faster
+headless = True
+if headless:
+    os.environ["SDL_VIDEODRIVER"] = "dummy"
+
+n_hidden_neurons = 10
+
+experiment_name = 'multi_demo'
+if not os.path.exists(experiment_name):
+    os.makedirs(experiment_name)
+
+import platform
+
+# initializes simulation in multi evolution mode, for multiple static enemies.
+env = Environment(experiment_name=experiment_name,
+                  enemies=[1],
+                  multiplemode="yes",
+                  playermode="ai",
+                  player_controller=player_controller(n_hidden_neurons),
+                  enemymode="static",
+                  level=2,
+                  speed="fastest",
+                  logs="off"
+                  )
 
 
 class Individual:
@@ -37,9 +69,6 @@ class Individual:
     def __str__(self):
         return ",".join([str(x) for x in self.weights])
 
-    def __repr__(self):
-        return self.weights
-
     def __le__(self, other):
         return self.fitness <= other.fitness
 
@@ -55,7 +84,7 @@ class Individual:
 
 def selection(population):
     random_pop = rng.choice(population, len(population))
-    return [(random_pop[i], random_pop[i+1]) for i in range(0, len(random_pop)-1, 2)]
+    return [(random_pop[i], random_pop[i + 1]) for i in range(0, len(random_pop) - 1, 2)]
 
 
 def mutate(population, prop, generations, current_generation):
@@ -117,13 +146,36 @@ def final_selection(population, pop_size):
     return sorted(population, reverse=True, key=lambda x: x.fitness)[:pop_size]
 
 
-def evaluate(population, environment):
-    # This assumes that an individual will never have its weights changed
-    # TODO CHECK THIS ASSUMPTION!
-    for individual in population:
+def eval_ind(individuals, enemies, multi_fitness):
+    env.enemies = enemies
+    env.cons_multi = multi_fitness
+    fitnesses = []
+    for individual in individuals:
         if individual.fitness is None:
-            f, p, e, t = environment.play(pcont=individual.weights)
+            f, p, e, t = env.play(pcont=individual.weights)
             individual.fitness = f
+            fitnesses.append(f)
+    return fitnesses
+
+
+def evaluate(pool, population, num_workers, enemies, multi_fitness):
+    jobs = []
+    d = int(len(population) // num_workers)
+    fitnesses = []
+    for i in range(num_workers):
+        start = i * d
+        end = ((i + 1) * d)
+        if i == (num_workers - 1):
+            jobs.append(pool.apply_async(eval_ind, (population[start:], enemies, multi_fitness)))
+        else:
+            jobs.append(pool.apply_async(eval_ind, (population[start:end], enemies, multi_fitness)))
+
+    for job in jobs:
+        fitnesses.extend(job.get(timeout=None))
+
+    for i in range(len(population)):
+        population[i].fitness = fitnesses[i]
+
     return population
 
 
@@ -134,7 +186,15 @@ def resample_population(population, population_size, num_weights):
     return population
 
 
-def evolve(population_size, num_generations, num_weights, mutate_prop, environment, resample_gen, self_adaptive=False):
+def evolve(population_size,
+           num_generations,
+           num_weights,
+           mutate_prop,
+           resample_gen,
+           pool,
+           enemies,
+           multi_fitness,
+           self_adaptive=False):
     print("Initializing Population")
     #  randomly initialise pop
 
@@ -144,39 +204,39 @@ def evolve(population_size, num_generations, num_weights, mutate_prop, environme
     total_time = timedelta(0)
 
     sigmas = [rng.uniform(0, 1) for _ in range(num_weights)]
-    tau = 1/np.sqrt(2*num_weights)
-    tau_p = 1/np.sqrt(2*np.sqrt(num_weights))
+    tau = 1 / np.sqrt(2 * num_weights)
+    tau_p = 1 / np.sqrt(2 * np.sqrt(num_weights))
 
     population = [Individual(num_weights) for _ in range(population_size)]
     print(f"\n\n==== Generation 0/{num_generations} =====\n")
     start = datetime.now()
-    population = evaluate(population, environment)
+    population = evaluate(pool, population, num_workers, enemies, multi_fitness)
     end = datetime.now()
     time = end - start
     total_time += time
 
     mean = np.mean([x.fitness for x in population])
-    max = np.max([x.fitness for x in population])
+    maxx = np.max([x.fitness for x in population])
 
     print(f"Mean fitness: {mean}")
-    print(f"Max fitness: {max}")
+    print(f"Max fitness: {maxx}")
     print(f"Duration: {time} (average: {time})")
     means.append(mean)
-    maxes.append(max)
+    maxes.append(maxx)
 
     for generation in range(num_generations):
-        print(f"\n\n==== Generation {generation+1}/{num_generations} =====\n")
+        print(f"\n\n==== Generation {generation + 1}/{num_generations} =====\n")
         resampled = False
         start = datetime.now()
         if stagnant:
             resampled = True
             stagnant = False
             population = resample_population(population, population_size, num_weights)
-            population = evaluate(population, environment)
+            population = evaluate(pool, population, num_workers, enemies, multi_fitness)
         elif generation != 0 and generation % resample_gen == 0:
             resampled = True
             population = resample_population(population, population_size, num_weights)
-            population = evaluate(population, environment)
+            population = evaluate(pool, population, num_workers, enemies, multi_fitness)
 
         parents = selection(population)
         offspring = recombination(parents)
@@ -185,12 +245,12 @@ def evolve(population_size, num_generations, num_weights, mutate_prop, environme
             population, sigmas = self_adaptive_mutation(population, mutate_prop, sigmas, tau, tau_p)
         else:
             population = mutate(population, mutate_prop, num_generations, generation)
-        population = evaluate(population, environment)
+        population = evaluate(pool, population, num_workers, enemies, multi_fitness)
         population = final_selection(population, population_size)
 
         mean = np.mean([x.fitness for x in population])
-        max = np.max([x.fitness for x in population])
-        if isclose(mean, max, rel_tol=1e-05):
+        maxx = np.max([x.fitness for x in population])
+        if isclose(mean, maxx, rel_tol=1e-05):
             stagnant = True
 
         end = datetime.now()
@@ -202,10 +262,10 @@ def evolve(population_size, num_generations, num_weights, mutate_prop, environme
         if stagnant:
             print("Population stagnant. Resetting in next generation.")
         print(f"Mean fitness: {mean}")
-        print(f"Max fitness: {max}")
-        print(f"Duration: {time} (average: {total_time/(generation+2)})")
+        print(f"Max fitness: {maxx}")
+        print(f"Duration: {time} (average: {total_time / (generation + 2)})")
         means.append(mean)
-        maxes.append(max)
+        maxes.append(maxx)
 
     print(f"Total duration was {total_time}")
 
@@ -224,9 +284,13 @@ def save_results(means, maxes, best_genome, means_path, maxes_path, best_path):
 
 
 if __name__ == '__main__':
-    enemies = [2, 4, 5]
 
-    enemy_string = "".join([str(x) for x in enemies])
+    if platform.system() == 'Darwin':
+        set_start_method('spawn')  # Comment this if not on MACOS
+
+    _enemies = [2, 4, 5]
+
+    enemy_string = "".join([str(x) for x in _enemies])
     path = Path(f"handmade_results/{enemy_string}/")
     means_path = path.joinpath(f"means/")
     maxes_path = path.joinpath(f"maxes/")
@@ -240,45 +304,20 @@ if __name__ == '__main__':
     if not best_path.exists():
         best_path.mkdir(parents=True, exist_ok=True)
 
-    import sys
-    import os
-
-    sys.path.insert(0, 'evoman')
-    from evoman.environment import Environment
-    # choose this for not using visuals and thus making experiments faster
-    headless = True
-    if headless:
-        os.environ["SDL_VIDEODRIVER"] = "dummy"
-
-    n_hidden_neurons = 10
-
-    experiment_name = 'multi_demo'
-    if not os.path.exists(experiment_name):
-        os.makedirs(experiment_name)
-
-    # initializes simulation in multi evolution mode, for multiple static enemies.
-    env = Environment(experiment_name=experiment_name,
-                      enemies=enemies,
-                      multiplemode="yes",
-                      playermode="ai",
-                      player_controller=player_controller(n_hidden_neurons),
-                      enemymode="static",
-                      level=2,
-                      speed="fastest",
-                      logs="off"
-                      )
-
-    env.cons_multi = multi_fitness
 
     # number of weights for multilayer with 10 hidden neurons.
     n_vars = (env.get_num_sensors() + 1) * n_hidden_neurons + (n_hidden_neurons + 1) * 5
 
-    best, means, maxes = evolve(population_size=50,
-                                num_generations=100,
-                                num_weights=n_vars,
-                                mutate_prop=0.5,
-                                environment=env,
-                                resample_gen=20,
-                                self_adaptive=True
-                                )
-    save_results(means, maxes, best, means_path, maxes_path, best_path)
+    num_workers = cpu_count() - 1
+    pool = Pool(num_workers)
+    _best, _means, _maxes = evolve(population_size=50,
+                                   num_generations=100,
+                                   num_weights=n_vars,
+                                   mutate_prop=0.5,
+                                   resample_gen=20,
+                                   pool=pool,
+                                   enemies=_enemies,
+                                   multi_fitness=multi_fitness,
+                                   self_adaptive=True
+                                   )
+    save_results(_means, _maxes, _best, means_path, maxes_path, best_path)

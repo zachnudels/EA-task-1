@@ -10,6 +10,7 @@ from rnn_en_controller import EngineeredRNNController
 from datetime import datetime
 import platform
 
+
 import numpy as np
 from matplotlib import pyplot as plt
 import random
