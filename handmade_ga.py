@@ -177,7 +177,7 @@ def evaluate(pool, population, num_workers, enemies, multi_fitness):
     for job in jobs:
         fitnesses.extend(job.get(timeout=None))
 
-    print(len(fitnesses))
+#    print(len(fitnesses))
     for i in range(len(population)):
         population[i].fitness = fitnesses[i]
 
@@ -293,7 +293,7 @@ if __name__ == '__main__':
     if platform.system() == 'Darwin':
         set_start_method('spawn')  # Comment this if not on MACOS
 
-    _enemies = [2, 4, 5]
+    _enemies = [1, 6, 7]
 
     enemy_string = "".join([str(x) for x in _enemies])
     path = Path(f"handmade_results/{enemy_string}/")
@@ -313,10 +313,10 @@ if __name__ == '__main__':
     # number of weights for multilayer with 10 hidden neurons.
     n_vars = (env.get_num_sensors() + 1) * n_hidden_neurons + (n_hidden_neurons + 1) * 5
 
-    num_workers = cpu_count() - 1
+    num_workers = cpu_count()
     pool = Pool(num_workers)
     _best, _means, _maxes = evolve(population_size=50,
-                                   num_generations=100,
+                                   num_generations=50,
                                    num_weights=n_vars,
                                    mutate_prop=0.5,
                                    resample_gen=20,
