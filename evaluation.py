@@ -45,7 +45,7 @@ env = Environment(experiment_name=experiment_name,
 # read in weights
 def initialise_weights(group, method):
     # return 10 weight arrays
-    dir_path = Path(f"handmade_results/{method}/{group}//best")
+    dir_path = Path(f"handmade_results/{method}/{group}/best")
     weights = []
     for root, dirs, files in os.walk(dir_path):
         weights = [np.loadtxt(os.path.join(root, f), delimiter=',') for f in files if 'csv' in f]
@@ -74,7 +74,7 @@ def evaluate(group, method, num_workers, pool):
 
 
 def plot_and_save(gains, group, method):
-    path = Path(f"handmade_results/plots/{method}/{group}/")
+    path = Path(f"handmade_results/{method}/{group}/")
     if not path.exists():
         path.mkdir(parents=True, exist_ok=True)
 
@@ -91,13 +91,13 @@ def plot_and_save(gains, group, method):
 def evaluate_weights(weight_list):
     gains = []
     for weights in weight_list:
-        gains.append(np.mean([evaluate_individual(weights) for _ in range(5)]))
+        gains.append(np.mean([evaluate_individual(weights) for _ in range(1)]))
     return gains
 
 
 def evaluate_individual(weights):
     gains = []
-    for enemy in [1, 2, 3, 4, 5, 6, 7, 8]:
+    for enemy in [1]:#, 2, 3, 4, 5, 6, 7, 8]:
         env.enemies = [enemy]
         f, p, e, t = env.play(pcont=weights)
         gain = p - e
