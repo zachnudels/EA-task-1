@@ -49,7 +49,7 @@ def plot_graphs(group, method):
 if __name__ == '__main__':
     try:
         group = sys.argv[1]
-        method = sys.argv[2:]
+        method = " ".join(sys.argv[2:])
         plot_graphs(group, method)
     except Exception:
         raise ValueError("Requires args <group:(167|245)> <method:(Standard Mutation|Self Adaptive Mutation)>")
