@@ -45,6 +45,7 @@ class Individual:
     def __init__(self, weights=None):
         if isinstance(weights, list):
             self.weights = np.array(weights)
+            self.limit_weights(-1, 1)
         elif isinstance(weights, int):
             self.weights = rng.uniform(-1, 1, weights)
         else:
