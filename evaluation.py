@@ -91,13 +91,13 @@ def plot_and_save(gains, group, method):
 def evaluate_weights(weight_list):
     gains = []
     for weights in weight_list:
-        gains.append(np.mean([evaluate_individual(weights) for _ in range(1)]))
+        gains.append(np.mean([evaluate_individual(weights) for _ in range(5)]))
     return gains
 
 
 def evaluate_individual(weights):
     gains = []
-    for enemy in [1]:#, 2, 3, 4, 5, 6, 7, 8]:
+    for enemy in [1, 2, 3, 4, 5, 6, 7, 8]:
         env.enemies = [enemy]
         f, p, e, t = env.play(pcont=weights)
         gain = p - e
