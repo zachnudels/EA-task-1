@@ -43,9 +43,9 @@ env = Environment(experiment_name=experiment_name,
 
 
 # read in weights
-def initialise_weights(group):
+def initialise_weights(group, method):
     # return 10 weight arrays
-    dir_path = Path(f"handmade_results/{group}/best")
+    dir_path = Path(f"handmade_results/{method}/{group}//best")
     weights = []
     for root, dirs, files in os.walk(dir_path):
         weights = [np.loadtxt(os.path.join(root, f), delimiter=',') for f in files if 'csv' in f]
@@ -53,7 +53,7 @@ def initialise_weights(group):
 
 
 def evaluate(group, method, num_workers, pool):
-    all_weights = initialise_weights(group)
+    all_weights = initialise_weights(group, method)
     all_gains = []
 
     jobs = []
