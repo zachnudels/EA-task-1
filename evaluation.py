@@ -117,6 +117,7 @@ def evaluate_best(weights):
         path.mkdir(parents=True, exist_ok=True)
     df = pd.DataFrame({'Enemy Points': epts, 'Player Points': ppts})
     df.to_csv(path.joinpath("final_table.csv"))
+    np.savetxt(path.joinpath("best.txt"), weights)
 
 
 def plot_and_save(gains, group, method):
